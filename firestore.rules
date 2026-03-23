@@ -1,0 +1,118 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+    function isOwner(userId) {
+      return request.auth.uid == userId;
+    }
+    function isAdmin() {
+      return isSignedIn()
+        && exists(/databases/$(database)/documents/users/$(request.auth.uid))
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+    function isNotBanned() {
+      return isSignedIn() && (
+        !exists(/databases/$(database)/documents/users/$(request.auth.uid))
+        ||
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.banned != true
+      );
+    }
+    function isBatchMember(batchId) {
+      return isSignedIn() &&
+        exists(/databases/$(database)/documents/batches/$(batchId)/members/$(request.auth.uid));
+    }
+
+    match /users/{userId} {
+      allow read: if isSignedIn() && isNotBanned();
+      allow read: if isAdmin();
+      allow create: if isSignedIn() && isOwner(userId);
+      allow update: if isSignedIn() && isOwner(userId) &&
+        !('role'   in request.resource.data.diff(resource.data).affectedKeys()) &&
+        !('banned' in request.resource.data.diff(resource.data).affectedKeys());
+      allow update: if isAdmin();
+      allow delete: if false;
+    }
+
+    match /quizSets/{quizId} {
+      allow read: if isSignedIn() && isNotBanned();
+      allow write: if isAdmin();
+      match /questions/{questionId} {
+        allow read: if isSignedIn() && isNotBanned();
+        allow write: if isAdmin();
+      }
+    }
+
+    match /quizAttempts/{attemptId} {
+      allow read: if isSignedIn() && isNotBanned();
+      allow read: if isAdmin();
+      allow create: if isSignedIn() && isNotBanned() &&
+        request.resource.data.userId == request.auth.uid;
+      allow update, delete: if isAdmin();
+    }
+
+    match /leaderboards/{quizId} {
+      allow read: if isSignedIn() && isNotBanned();
+
+      // {context} is either "global", "batch_{batchId}", or legacy "entries"
+      match /{context}/{userId} {
+        allow read: if isSignedIn() && isNotBanned();
+        allow create: if isSignedIn() && isNotBanned() && isOwner(userId) &&
+          request.resource.data.userId == request.auth.uid;
+        allow update: if isSignedIn() && isNotBanned() && isOwner(userId) &&
+          request.resource.data.userId == request.auth.uid;
+        allow write: if isAdmin();
+      }
+    }
+
+    match /announcements/{announcementId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+
+    match /bookmarks/{bookmarkId} {
+      allow read: if isSignedIn() && isOwner(resource.data.userId);
+      allow create: if isSignedIn() && isNotBanned() &&
+        request.resource.data.userId == request.auth.uid;
+      allow delete: if isSignedIn() && isOwner(resource.data.userId);
+      allow update: if false;
+    }
+
+    match /batches/{batchId} {
+      allow read: if isSignedIn() && isNotBanned();
+      allow create, update, delete: if isAdmin();
+
+      match /members/{userId} {
+        allow read: if isSignedIn() && (isOwner(userId) || isAdmin());
+        allow create, delete, update: if isAdmin();
+      }
+
+      match /queries/{threadId} {
+        allow read: if isAdmin() ||
+          (isBatchMember(batchId) && resource.data.studentId == request.auth.uid);
+        allow create: if isAdmin() ||
+          (isBatchMember(batchId) && isNotBanned() &&
+           request.resource.data.studentId == request.auth.uid);
+        allow update: if isAdmin() ||
+          (isBatchMember(batchId) && isNotBanned() &&
+           resource.data.studentId == request.auth.uid);
+        allow delete: if isAdmin();
+      }
+
+      match /groupChat/{msgId} {
+        allow read: if isAdmin() || isBatchMember(batchId);
+        allow create: if isAdmin() || (isBatchMember(batchId) && isNotBanned());
+        allow delete: if isAdmin();
+        allow update: if false;
+      }
+    }
+
+    match /batchQuizzes/{docId} {
+      allow read: if isSignedIn() && isNotBanned();
+      allow write: if isAdmin();
+    }
+
+  }
+}
