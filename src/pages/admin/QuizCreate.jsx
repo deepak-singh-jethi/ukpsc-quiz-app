@@ -1,9 +1,9 @@
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useNavigate } from "react-router-dom"
 import { useAuth } from "../../context/AuthContext"
 import { db } from "../../firebase/config"
 import { collection, addDoc, writeBatch, doc } from "firebase/firestore"
-import { invalidateCache } from "../../firebase/firestoreCache"
+import { invalidateCache, cachedGetDocs, TTL_LONG } from "../../firebase/firestoreCache"
 import AdminLayout from "../../components/AdminLayout"
 import {
   PenLine, Upload, Plus, Trash2, ChevronDown, ChevronUp,
@@ -104,8 +104,13 @@ function StepBar({ step, setStep, meta, questions }) {
 }
 
 // ─── Step 1: Quiz Details — FULL WIDTH two-column ─────────────────────────────
-function StepDetails({ meta, onChange, onNext }) {
+function StepDetails({ meta, onChange, onNext, hints }) {
   const ok = !!(meta.title.trim() && meta.totalTime)
+
+  // Topics filtered to those belonging to the currently selected category
+  const filteredTopics = hints.topics.filter(t =>
+    !meta.category.trim() || hints.topicsByCategory[meta.category.trim()]?.has(t)
+  )
 
   return (
     <div className="flex-1 overflow-y-auto">
@@ -144,8 +149,21 @@ function StepDetails({ meta, onChange, onNext }) {
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className={L}>Subject / Category</label>
-                <input value={meta.category} onChange={e => onChange("category", e.target.value)}
-                  placeholder="e.g. History, Science…" className={F}/>
+                {/* datalist gives free-text input + dropdown hints from existing subjects */}
+                <input
+                  value={meta.category}
+                  onChange={e => { onChange("category", e.target.value); onChange("topic", "") }}
+                  placeholder="e.g. Uttarakhand GK…"
+                  list="hint-categories"
+                  autoComplete="off"
+                  className={F}
+                />
+                <datalist id="hint-categories">
+                  {hints.categories.map(c => <option key={c} value={c} />)}
+                </datalist>
+                {hints.categories.length > 0 && (
+                  <p className="text-[10px] text-gray-600 mt-1">{hints.categories.length} existing subject{hints.categories.length !== 1 ? "s" : ""}</p>
+                )}
               </div>
               <div>
                 <label className={L}>Difficulty</label>
@@ -158,9 +176,22 @@ function StepDetails({ meta, onChange, onNext }) {
             </div>
             <div>
               <label className={L}>Topic / Chapter <span className="text-gray-600 font-normal">(optional)</span></label>
-              <input value={meta.topic} onChange={e => onChange("topic", e.target.value)}
-                placeholder="e.g. Chapter 3 — Mughal Empire, Polity Unit 2…" className={F}/>
-              <p className="text-[10px] text-gray-600 mt-1.5">Helps students filter quizzes by specific chapters or topics within a subject.</p>
+              {/* Topic hints scoped to selected category when possible */}
+              <input
+                value={meta.topic}
+                onChange={e => onChange("topic", e.target.value)}
+                placeholder="e.g. Chapter 3 — Mughal Empire, Polity Unit 2…"
+                list="hint-topics"
+                autoComplete="off"
+                className={F}
+              />
+              <datalist id="hint-topics">
+                {filteredTopics.map(t => <option key={t} value={t} />)}
+              </datalist>
+              <p className="text-[10px] text-gray-600 mt-1.5">
+                Helps students filter quizzes by specific chapters or topics within a subject.
+                {filteredTopics.length > 0 && ` ${filteredTopics.length} existing topic${filteredTopics.length !== 1 ? "s" : ""}${meta.category.trim() ? " in this subject" : ""}.`}
+              </p>
             </div>
           </div>
 
@@ -925,6 +956,37 @@ export default function QuizCreate() {
   })
   const [questions, setQuestions] = useState([mkBlankQ()])
 
+  // ── Subject/Topic hints ──────────────────────────────────────────────────────
+  // Load all existing quizSets once on mount to extract unique categories/topics.
+  // Uses the cached layer (TTL_LONG) so it costs 0 reads on repeat visits.
+  const [hints, setHints] = useState({ categories: [], topics: [], topicsByCategory: {} })
+  useEffect(() => {
+    async function loadHints() {
+      try {
+        const quizzes = await cachedGetDocs("quizSets", collection(db, "quizSets"), { ttl: TTL_LONG })
+        const catSet = new Set()
+        const topSet = new Set()
+        const topicsByCategory = {}   // { "Uttarakhand GK": Set(["Van Panchayat", ...]) }
+        quizzes.forEach(q => {
+          if (q.category?.trim()) {
+            catSet.add(q.category.trim())
+            if (q.topic?.trim()) {
+              if (!topicsByCategory[q.category.trim()]) topicsByCategory[q.category.trim()] = new Set()
+              topicsByCategory[q.category.trim()].add(q.topic.trim())
+            }
+          }
+          if (q.topic?.trim()) topSet.add(q.topic.trim())
+        })
+        setHints({
+          categories: [...catSet].sort(),
+          topics:     [...topSet].sort(),
+          topicsByCategory,
+        })
+      } catch (e) { console.error("hints load failed", e) }
+    }
+    loadHints()
+  }, [])
+
   function handleMetaChange(field, value) { setMeta(m=>({...m,[field]:value})) }
 
   function validate() {
@@ -995,7 +1057,7 @@ export default function QuizCreate() {
           </div>
         </div>
 
-        {step===0 && <StepDetails meta={meta} onChange={handleMetaChange} onNext={()=>setStep(1)}/>}
+        {step===0 && <StepDetails meta={meta} onChange={handleMetaChange} onNext={()=>setStep(1)} hints={hints}/>}
         {step===1 && <StepQuestions questions={questions} setQuestions={setQuestions} mode={mode} setMode={setMode} onNext={()=>setStep(2)} onBack={()=>setStep(0)}/>}
         {step===2 && <StepReview meta={meta} questions={questions} saving={saving} onSave={handleSave} onBack={()=>setStep(1)}/>}
       </div>
