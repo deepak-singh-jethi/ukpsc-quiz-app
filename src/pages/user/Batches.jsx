@@ -191,9 +191,9 @@ function JoinedBatchDetail({ batch, myAttempts, currentUser, currentUserName, on
   const [activeTab,     setActiveTab]     = useState("quizzes")
   const [activeSubject, setActiveSubject] = useState("all")
   const [activeTopic,   setActiveTopic]   = useState("all")
-  const [quizFilter,    setQuizFilter]    = useState("all")
-  const [levelFilter,   setLevelFilter]   = useState("all")
+  const [quizFilter,    setQuizFilter]    = useState("todo")
   const [search,        setSearch]        = useState("")
+  const [visibleCount,  setVisibleCount]  = useState(10)
 
   // Topics scoped to the active subject
   const topics = useMemo(() => {
@@ -204,7 +204,7 @@ function JoinedBatchDetail({ batch, myAttempts, currentUser, currentUserName, on
   }, [batch.quizzes, activeSubject])
 
   // Reset topic when subject changes
-  function handleSubjectChange(val) { setActiveSubject(val); setActiveTopic("all") }
+  function handleSubjectChange(val) { setActiveSubject(val); setActiveTopic("all"); setVisibleCount(10) }
 
   const visibleQuizzes = useMemo(() => {
     // Respect admin-set order  -  do not re-sort by done/undone (that changes positions unexpectedly)
@@ -213,13 +213,12 @@ function JoinedBatchDetail({ batch, myAttempts, currentUser, currentUserName, on
     if (activeTopic   !== "all")  list = list.filter(q => q.topic === activeTopic)
     if (quizFilter === "todo")    list = list.filter(q => !attemptedIds.has(q.id))
     if (quizFilter === "done")    list = list.filter(q => attemptedIds.has(q.id))
-    if (levelFilter !== "all")    list = list.filter(q => q.difficulty === levelFilter)
     if (search.trim()) {
       const s = search.trim().toLowerCase()
       list = list.filter(q => (q.title || "").toLowerCase().includes(s))
     }
     return list
-  }, [safeQuizzes, attemptedIds, activeSubject, activeTopic, quizFilter, levelFilter, search])
+  }, [safeQuizzes, attemptedIds, activeSubject, activeTopic, quizFilter, search])
 
   const todoCnt = safeQuizzes.filter(q =>
     !attemptedIds.has(q.id) &&
@@ -483,57 +482,36 @@ function JoinedBatchDetail({ batch, myAttempts, currentUser, currentUserName, on
         </button>
 
         {/*  Compact header bar  */}
-        <div className="flex items-center gap-4 bg-gray-900 border border-gray-800 rounded-2xl px-5 py-3.5 mb-4 flex-wrap">
-          <div className="w-9 h-9 rounded-xl bg-purple-500/15 border border-purple-500/25 flex items-center justify-center shrink-0">
-            <GraduationCap size={18} className="text-purple-400" />
+        <div className="flex items-center gap-3 bg-gray-900 border border-gray-800 rounded-xl px-4 py-2.5 mb-3 flex-wrap">
+          <div className="w-7 h-7 rounded-lg bg-purple-500/15 border border-purple-500/25 flex items-center justify-center shrink-0">
+            <GraduationCap size={14} className="text-purple-400" />
           </div>
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
-              <h1 className="text-base font-black text-white tracking-tight">{batch.name}</h1>
-              <span className="text-[10px] font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-full">Enrolled</span>
+              <h1 className="text-sm font-black text-white tracking-tight">{batch.name}</h1>
+              <span className="text-[10px] font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-1.5 py-0.5 rounded-full">Enrolled</span>
               {batch.description && <span className="text-gray-500 text-xs hidden sm:block truncate max-w-xs">{batch.description}</span>}
             </div>
-            {subjects.length > 0 && (
-              <div className="flex items-center gap-1 flex-wrap mt-1">
-                {subjects.map(cat => {
-                  const { done, total } = subjectMap[cat]
-                  return (
-                    <button key={cat} onClick={() => { handleSubjectChange(cat); setActiveTab("quizzes") }}
-                      className="text-[11px] text-gray-400 hover:text-white bg-gray-800/60 hover:bg-gray-700 border border-gray-700/50 px-2 py-0.5 rounded-full transition flex items-center gap-1">
-                      {cat}
-                      <span className={`font-bold ${done === total && total > 0 ? "text-emerald-400" : done > 0 ? "text-amber-400" : "text-gray-600"}`}>
-                        {done}/{total}
-                      </span>
-                    </button>
-                  )
-                })}
-              </div>
-            )}
           </div>
-          <div className="flex items-center gap-4 text-xs shrink-0">
-            <div className="text-center">
-              <div className="font-black text-amber-400 text-sm">{totalCount - doneCount}</div>
-              <div className="text-gray-600 text-[10px]">to do</div>
+          <div className="flex items-center gap-3 text-xs shrink-0">
+            <div className="flex items-center gap-1">
+              <span className="font-black text-amber-400">{totalCount - doneCount}</span>
+              <span className="text-gray-600 text-[10px]">to do</span>
             </div>
-            <div className="text-center">
-              <div className="font-black text-emerald-400 text-sm">{doneCount}</div>
-              <div className="text-gray-600 text-[10px]">done</div>
+            <div className="flex items-center gap-1">
+              <span className="font-black text-emerald-400">{doneCount}</span>
+              <span className="text-gray-600 text-[10px]">done</span>
             </div>
-
             {bestStreak > 0 && (
-              <div className="text-center">
-                <div className="font-black text-orange-400 text-sm">{bestStreak}</div>
-                <div className="text-gray-600 text-[10px]">streak</div>
+              <div className="flex items-center gap-1">
+                <span className="font-black text-orange-400">{bestStreak}</span>
+                <span className="text-gray-600 text-[10px]">streak</span>
               </div>
             )}
-            <div className="flex flex-col items-end gap-1">
-              <div className="flex items-baseline gap-1">
-                <span className="text-sm font-black text-white">{doneCount}</span>
-                <span className="text-gray-600 text-xs">/{totalCount}</span>
-              </div>
-              <div className="w-20 h-1.5 bg-gray-800 rounded-full overflow-hidden">
-                <div className="h-full bg-purple-500 rounded-full transition-all"
-                  style={{ width: `${progress}%` }} />
+            <div className="flex items-center gap-1.5">
+              <span className="text-xs font-black text-white">{doneCount}<span className="text-gray-600 font-normal">/{totalCount}</span></span>
+              <div className="w-16 h-1 bg-gray-800 rounded-full overflow-hidden">
+                <div className="h-full bg-purple-500 rounded-full transition-all" style={{ width: `${progress}%` }} />
               </div>
             </div>
           </div>
@@ -541,7 +519,7 @@ function JoinedBatchDetail({ batch, myAttempts, currentUser, currentUserName, on
 
         {/*  Tabs + content  */}
         <div className="flex flex-col flex-1 min-h-0">
-        <div className="flex gap-2 mb-3 flex-wrap flex-shrink-0">
+        <div className="flex gap-2 mb-2 flex-wrap flex-shrink-0">
           {[
             { id: "quizzes", label: "Quizzes",        icon: BookOpen,      count: totalCount },
             { id: "qa",      label: "Ask Instructor", icon: MessageCircle, count: null, badge: hasUnread },
@@ -571,46 +549,45 @@ function JoinedBatchDetail({ batch, myAttempts, currentUser, currentUserName, on
               <p className="text-gray-500 text-sm">No quizzes assigned yet.</p>
             </div>
           ) : (
-            <div className="flex flex-col sm:flex-row gap-3 min-h-0 flex-1">
+            <div className="flex gap-3 min-h-0 flex-1">
+
+              {/* ── Sidebar ── */}
               {subjects.length > 0 && (
-                <div className="hidden sm:flex w-64 shrink-0 bg-gray-900 border border-gray-800 rounded-2xl py-3 flex-col overflow-y-auto">
-                  <p className="text-[10px] font-bold uppercase tracking-widest text-gray-600 px-3 pb-2 pt-1">Subjects</p>
+                <div className="hidden sm:flex w-48 shrink-0 flex-col gap-px overflow-y-auto">
                   <button onClick={() => handleSubjectChange("all")}
-                    className={`w-full flex items-center justify-between px-3 py-2.5 text-xs font-medium transition rounded-lg hover:bg-gray-800 ${
-                      activeSubject === "all" ? "text-white bg-gray-800" : "text-gray-400"
+                    className={`w-full flex items-center justify-between px-3 py-2 text-xs rounded-lg transition ${
+                      activeSubject === "all" ? "bg-gray-800 text-white font-semibold" : "text-gray-500 hover:text-gray-300 hover:bg-gray-900"
                     }`}>
                     <span>All Subjects</span>
-                    <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold ${
-                      doneCount === totalCount && totalCount > 0
-                        ? "bg-emerald-500/15 text-emerald-400"
-                        : doneCount > 0 ? "bg-amber-500/15 text-amber-400"
-                        : "bg-gray-800 text-gray-600"
+                    <span className={`text-[10px] font-bold tabular-nums ${
+                      doneCount === totalCount && totalCount > 0 ? "text-emerald-400"
+                      : doneCount > 0 ? "text-amber-400" : "text-gray-600"
                     }`}>{doneCount}/{totalCount}</span>
                   </button>
-                  <div className="h-px bg-gray-800 mx-3 my-1" />
+                  <div className="h-px bg-gray-800/60 my-1 mx-1" />
                   {subjects.map(cat => {
                     const { done, total } = subjectMap[cat]
                     const isActive = activeSubject === cat
                     return (
                       <button key={cat} onClick={() => handleSubjectChange(cat)}
-                        className={`w-full flex items-center justify-between px-3 py-2.5 text-xs transition rounded-lg hover:bg-gray-800 ${
-                          isActive ? "text-white bg-gray-800 font-medium" : "text-gray-400"
+                        className={`w-full flex items-center justify-between px-3 py-2 text-xs rounded-lg transition ${
+                          isActive ? "bg-gray-800 text-white font-semibold" : "text-gray-500 hover:text-gray-300 hover:bg-gray-900"
                         }`}>
-                        <span className="truncate flex-1 text-left">{cat}</span>
-                        <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold shrink-0 ml-1 ${
-                          done === total && total > 0
-                            ? "bg-emerald-500/15 text-emerald-400"
-                            : done > 0 ? "bg-amber-500/15 text-amber-400"
-                            : "bg-gray-800/80 text-gray-600"
+                        <span className="truncate flex-1 text-left mr-2">{cat}</span>
+                        <span className={`text-[10px] font-bold tabular-nums shrink-0 ${
+                          done === total && total > 0 ? "text-emerald-400"
+                          : done > 0 ? "text-amber-400" : "text-gray-600"
                         }`}>{done}/{total}</span>
                       </button>
                     )
                   })}
-                  {/* Topic sub-filter removed from sidebar  -  topics are in the filter bar above */}
                 </div>
               )}
 
+              {/* ── Main content ── */}
               <div className="flex-1 min-w-0 flex flex-col min-h-0">
+
+                {/* Mobile subject pills */}
                 {subjects.length > 0 && (
                   <div className="sm:hidden flex items-center gap-1.5 flex-wrap mb-2 pb-2 border-b border-gray-800 flex-shrink-0">
                     <button onClick={() => handleSubjectChange("all")}
@@ -625,138 +602,178 @@ function JoinedBatchDetail({ batch, myAttempts, currentUser, currentUserName, on
                     ))}
                   </div>
                 )}
-                <div className="flex items-center gap-2 mb-3 flex-wrap flex-shrink-0">
-                  {/* All/Todo/Done chips */}
-                  <div className="flex gap-1 bg-gray-900 border border-gray-800 rounded-xl p-1">
+
+                {/* ── Filter bar ── */}
+                <div className="flex items-center gap-2 mb-2 flex-shrink-0">
+                  {/* All / To Do / Done pills */}
+                  <div className="flex gap-0.5 bg-gray-900 border border-gray-800 rounded-lg p-0.5">
                     {[
-                      { id: "all",  label: "All",   count: (activeSubject === "all" ? totalCount : (subjectMap[activeSubject]?.total || 0)) },
+                      { id: "all",  label: "All",   count: activeSubject === "all" ? totalCount : (subjectMap[activeSubject]?.total || 0) },
                       { id: "todo", label: "To Do", count: todoCnt },
                       { id: "done", label: "Done",  count: doneCnt },
                     ].map(f => (
-                      <button key={f.id} onClick={() => setQuizFilter(f.id)}
-                        className={`flex items-center gap-1 text-xs font-semibold px-3 py-1.5 rounded-lg transition ${
+                      <button key={f.id} onClick={() => { setQuizFilter(f.id); setVisibleCount(10) }}
+                        className={`flex items-center gap-1 text-[11px] font-semibold px-2.5 py-1 rounded-md transition ${
                           quizFilter === f.id
-                            ? f.id === "done" ? "bg-emerald-500/15 text-emerald-400"
-                              : f.id === "todo" ? "bg-amber-500/15 text-amber-400"
-                              : "bg-gray-700 text-white"
-                            : "text-gray-500 hover:text-white"
+                            ? f.id === "done"  ? "bg-emerald-500/15 text-emerald-400"
+                            : f.id === "todo"  ? "bg-amber-500/15 text-amber-400"
+                            : "bg-gray-700 text-white"
+                          : "text-gray-500 hover:text-gray-300"
                         }`}>
                         {f.label}
-                        <span className={`text-[10px] font-black ${quizFilter === f.id ? "" : "text-gray-700"}`}>{f.count}</span>
+                        <span className={`tabular-nums text-[10px] font-black ${quizFilter === f.id ? "" : "text-gray-700"}`}>{f.count}</span>
                       </button>
                     ))}
                   </div>
 
-                  {/* Topic dropdown  -  scoped to active subject, always shown when topics exist */}
+                  {/* Topic compact select — only when topics exist */}
                   {topics.length > 0 && (
-                    <select value={activeTopic} onChange={e => setActiveTopic(e.target.value)}
-                      className="bg-gray-900 border border-indigo-500/30 text-xs text-indigo-300 rounded-xl px-3 py-2 focus:outline-none focus:border-indigo-500/50 cursor-pointer">
+                    <select value={activeTopic} onChange={e => { setActiveTopic(e.target.value); setVisibleCount(10) }}
+                      className="bg-gray-900 border border-gray-800 text-[11px] text-gray-400 rounded-lg px-2.5 py-1.5 focus:outline-none focus:border-indigo-500/40 cursor-pointer max-w-[140px] truncate">
                       <option value="all">All Topics</option>
                       {topics.map(t => <option key={t} value={t}>{t}</option>)}
                     </select>
                   )}
 
-                  <select value={levelFilter} onChange={e => setLevelFilter(e.target.value)}
-                    className="bg-gray-900 border border-gray-800 text-xs text-gray-400 rounded-xl px-3 py-2 focus:outline-none cursor-pointer">
-                    <option value="all">All Levels</option>
-                    <option value="easy">Easy</option>
-                    <option value="medium">Medium</option>
-                    <option value="hard">Hard</option>
-                  </select>
-                  <div className="relative flex-1 min-w-[140px]">
-                    <Search size={12} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-600 pointer-events-none" />
-                    <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search..."
-                      className="w-full bg-gray-900 border border-gray-800 text-white text-xs rounded-xl pl-8 pr-7 py-2 focus:outline-none focus:border-gray-600 placeholder-gray-700" />
+                  {/* Search — flex-1 takes remaining space */}
+                  <div className="relative flex-1 min-w-0">
+                    <Search size={11} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-600 pointer-events-none" />
+                    <input value={search} onChange={e => { setSearch(e.target.value); setVisibleCount(10) }}
+                      placeholder="Search quizzes…"
+                      className="w-full bg-gray-900 border border-gray-800 text-white text-[11px] rounded-lg pl-7 pr-6 py-1.5 focus:outline-none focus:border-gray-600 placeholder-gray-700" />
                     {search && (
-                      <button onClick={() => setSearch("")} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-600 hover:text-gray-300">
+                      <button onClick={() => { setSearch(""); setVisibleCount(10) }}
+                        className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-600 hover:text-gray-300">
                         <X size={10} />
                       </button>
                     )}
                   </div>
-                  {(quizFilter !== "all" || levelFilter !== "all" || activeTopic !== "all" || search) && (
-                    <button onClick={() => { setQuizFilter("all"); setLevelFilter("all"); setSearch(""); setActiveTopic("all") }}
-                      className="text-xs text-gray-500 hover:text-rose-400 border border-gray-800 px-2.5 py-2 rounded-xl transition flex items-center gap-1">
+
+                  {/* Clear — only when non-default filters active */}
+                  {(quizFilter !== "todo" || activeTopic !== "all" || search) && (
+                    <button onClick={() => { setQuizFilter("todo"); setSearch(""); setActiveTopic("all"); setVisibleCount(10) }}
+                      className="shrink-0 text-[11px] text-gray-600 hover:text-rose-400 transition flex items-center gap-0.5">
                       <X size={10} /> Clear
                     </button>
                   )}
                 </div>
 
-                <div className="overflow-y-auto flex-1 min-h-0 pr-0.5">
-                {visibleQuizzes.length === 0 ? (
-                  <div className="rounded-2xl border border-gray-800 bg-gray-900/40 p-10 text-center">
-                    <Search size={24} className="mx-auto text-gray-700 mb-2" />
-                    <p className="text-gray-500 text-sm">No quizzes match your filters.</p>
-                    <button onClick={() => { setQuizFilter("all"); setLevelFilter("all"); setSearch(""); setActiveTopic("all") }}
-                      className="mt-2 text-xs text-cyan-400 hover:text-cyan-300 transition">Clear filters</button>
-                  </div>
-                ) : (
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
-                    {visibleQuizzes.map((q, idx) => {
+                {/* ── Quiz list ── */}
+                <div className="overflow-y-auto flex-1 min-h-0">
+                  {visibleQuizzes.length === 0 ? (
+                    <div className="rounded-xl border border-gray-800 bg-gray-900/40 p-10 text-center">
+                      <Search size={22} className="mx-auto text-gray-700 mb-2" />
+                      <p className="text-gray-500 text-sm">No quizzes match.</p>
+                      <button onClick={() => { setQuizFilter("todo"); setSearch(""); setActiveTopic("all"); setVisibleCount(10) }}
+                        className="mt-2 text-xs text-cyan-400 hover:text-cyan-300 transition">Clear filters</button>
+                    </div>
+                  ) : (() => {
+                    // When "All" selected, split into pending + done groups for visual separation
+                    const sliced = visibleQuizzes.slice(0, visibleCount)
+                    const pending = quizFilter === "all" ? sliced.filter(q => !attemptedIds.has(q.id)) : (quizFilter === "todo" ? sliced : [])
+                    const done    = quizFilter === "all" ? sliced.filter(q =>  attemptedIds.has(q.id)) : (quizFilter === "done" ? sliced : [])
+                    const showGroups = quizFilter === "all" && (pending.length > 0 && done.length > 0)
+
+                    const renderCard = (q) => {
                       const stats  = quizStats[q.id]
                       const isDone = !!stats
                       const pct    = stats?.best ?? null
-                      const diffColor = q.difficulty === "easy"   ? "text-emerald-400"
-                                      : q.difficulty === "medium" ? "text-amber-400"
-                                      : "text-rose-400"
                       return (
                         <div key={q.id}
                           onClick={() => navigate(`/quiz/${q.id}/detail${batch.id ? `?batchId=${batch.id}` : ''}`)}
-                          className={`relative flex flex-col bg-gray-900 border rounded-2xl p-4 cursor-pointer transition-all hover:border-gray-700 ${
-                            !isDone ? "border-cyan-500/30 hover:border-cyan-500/50" : "border-gray-800 opacity-85"
+                          className={`flex items-center gap-3 rounded-xl px-3 py-2 cursor-pointer transition-all border ${
+                            isDone
+                              ? "bg-gray-900/40 border-gray-800/60 hover:border-gray-700"
+                              : "bg-gray-900 border-cyan-500/20 hover:border-cyan-500/40"
                           }`}
+                          style={{ minHeight: 52 }}
                         >
-                          {!isDone && <div className="absolute top-0 left-4 right-4 h-0.5 bg-cyan-500/40 rounded-full" />}
-                          <div className="flex items-start gap-3 mb-3">
-                            <div className={`w-12 h-12 rounded-xl flex flex-col items-center justify-center shrink-0 border font-black ${
-                              isDone ? scoreCfg(pct) : "bg-gray-800/80 border-gray-700/50 text-gray-500"
+                          {/* Score / pending indicator */}
+                          {isDone ? (
+                            <div className={`w-10 h-10 rounded-lg flex flex-col items-center justify-center shrink-0 border font-black ${scoreCfg(pct)}`}>
+                              <span className="text-xs leading-none">{pct}%</span>
+                              {stats.count > 1 && <span className="text-[8px] opacity-50 mt-px">{stats.count}×</span>}
+                            </div>
+                          ) : (
+                            <div className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0 border border-cyan-500/20 bg-cyan-500/5">
+                              <span className="text-cyan-500/60 text-lg leading-none">›</span>
+                            </div>
+                          )}
+
+                          {/* Title + meta row */}
+                          <div className="flex-1 min-w-0 flex flex-col justify-center gap-0.5">
+                            <p className={`text-xs font-semibold leading-none truncate ${isDone ? "text-gray-400" : "text-white"}`}>
+                              {q.title}
+                            </p>
+                            <div className="flex items-center gap-1 min-w-0 overflow-hidden">
+                              {q.category && <span className="text-[10px] text-gray-600 shrink-0">{q.category}</span>}
+                              {q.topic && <>
+                                <span className="text-gray-700 text-[10px] shrink-0">·</span>
+                                <span className="text-[10px] text-indigo-400/80 truncate min-w-0">{q.topic}</span>
+                              </>}
+                              <span className="text-gray-700 text-[10px] shrink-0">·</span>
+                              <span className="text-[10px] text-gray-600 shrink-0 tabular-nums">{q.questionCount || 0}Q</span>
+                              <span className="text-gray-700 text-[10px] shrink-0">·</span>
+                              <span className="text-[10px] text-gray-600 shrink-0 tabular-nums">{q.totalTime || 0}m</span>
+                            </div>
+                          </div>
+
+                          {/* Action */}
+                          <button
+                            onClick={e => { e.stopPropagation(); navigate(`/quiz/${q.id}${batch.id ? `?batchId=${batch.id}` : ''}`) }}
+                            className={`shrink-0 text-[11px] font-bold px-3 py-1.5 rounded-lg transition ${
+                              isDone ? "bg-gray-800 hover:bg-gray-700 text-gray-400 hover:text-white" : "bg-cyan-500 hover:bg-cyan-400 text-gray-950"
                             }`}>
-                              {isDone ? (
-                                <><span className="text-sm leading-none">{pct}%</span><span className="text-[9px] opacity-60 mt-0.5">{q.questionCount}Q</span></>
-                              ) : (
-                                <span className="text-xs font-semibold">{q.questionCount || 0}Q</span>
-                              )}
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <p className={`text-sm font-semibold leading-snug mb-1 ${isDone ? "text-gray-400" : "text-white"}`}>
-                                {q.title}
-                              </p>
-                              <div className="flex items-center gap-1.5 text-xs flex-wrap">
-                                {q.category && <span className="text-gray-500 bg-gray-800/60 px-1.5 py-0.5 rounded-md text-[11px]">{q.category}</span>}
-                                {q.topic && <span className="text-indigo-400 bg-indigo-500/10 border border-indigo-500/20 px-1.5 py-0.5 rounded-md text-[11px]">📌 {q.topic}</span>}
-                                {q.difficulty && <span className={`capitalize text-[11px] font-medium ${diffColor}`}>{q.difficulty}</span>}
-                              </div>
-                            </div>
-                            {isDone && (
-                              <span className="shrink-0 text-[10px] bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-1.5 py-0.5 rounded-full font-bold flex items-center gap-0.5 mt-0.5">
-                                <CheckCircle size={8} /> Done
-                              </span>
-                            )}
-                          </div>
-                          <div className="flex items-center justify-between mt-auto pt-3 border-t border-gray-800/60">
-                            <div className="flex items-center gap-2 text-[11px] text-gray-500">
-                              <span>{q.totalTime || 0}m</span>
-                              {q.marksPerQ > 0 && <><span className="text-gray-700">.</span><span className="text-emerald-600">+{q.marksPerQ}</span></>}
-                              {q.negativeMark > 0 && <span className="text-rose-600">-{q.negativeMark}</span>}
-                              {isDone && stats.count > 1 && <><span className="text-gray-700">.</span><span className="text-gray-600">{stats.count} tries</span></>}
-                            </div>
-                            <button
-                              onClick={e => { e.stopPropagation(); navigate(`/quiz/${q.id}${batch.id ? `?batchId=${batch.id}` : ''}`) }}
-                              className={`text-xs font-bold px-3.5 py-1.5 rounded-xl transition ${
-                                isDone ? "bg-gray-800 hover:bg-gray-700 text-gray-300 hover:text-white" : "bg-cyan-500 hover:bg-cyan-400 text-gray-900"
-                              }`}>
-                              {isDone ? "Retry" : "Start ->"}
-                            </button>
-                          </div>
+                            {isDone ? "Retry" : "Start →"}
+                          </button>
                         </div>
                       )
-                    })}
-                  </div>
-                )}
-                {visibleQuizzes.length > 0 && visibleQuizzes.length < totalCount && (
-                  <p className="text-xs text-gray-600 mt-3 mb-2 text-center">
-                    Showing {visibleQuizzes.length} of {totalCount} quizzes
-                  </p>
-                )}
+                    }
+
+                    return (
+                      <div className="space-y-1 pb-2">
+                        {showGroups ? (
+                          <>
+                            {/* Pending group */}
+                            {pending.length > 0 && (
+                              <>
+                                <p className="text-[10px] font-bold uppercase tracking-widest text-amber-500/60 px-1 pt-1 pb-0.5">
+                                  Pending · {todoCnt}
+                                </p>
+                                <div className="space-y-1">
+                                  {pending.map(renderCard)}
+                                </div>
+                              </>
+                            )}
+                            {/* Done group */}
+                            {done.length > 0 && (
+                              <>
+                                <p className="text-[10px] font-bold uppercase tracking-widest text-emerald-500/60 px-1 pt-3 pb-0.5">
+                                  Completed · {doneCnt}
+                                </p>
+                                <div className="space-y-1">
+                                  {done.map(renderCard)}
+                                </div>
+                              </>
+                            )}
+                          </>
+                        ) : (
+                          sliced.map(renderCard)
+                        )}
+
+                        {/* Load More */}
+                        {visibleCount < visibleQuizzes.length ? (
+                          <button onClick={() => setVisibleCount(c => c + 10)}
+                            className="w-full mt-2 py-2 rounded-lg border border-gray-800 bg-gray-900/40 hover:bg-gray-800 text-gray-500 hover:text-white text-[11px] font-semibold transition flex items-center justify-center gap-1.5">
+                            Load more
+                            <span className="text-gray-700 font-normal">({visibleQuizzes.length - visibleCount} left)</span>
+                          </button>
+                        ) : visibleQuizzes.length > 10 ? (
+                          <p className="text-[10px] text-gray-700 text-center pt-2">All {visibleQuizzes.length} shown</p>
+                        ) : null}
+                      </div>
+                    )
+                  })()}
                 </div>
               </div>
             </div>
