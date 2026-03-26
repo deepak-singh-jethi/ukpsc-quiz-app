@@ -157,7 +157,7 @@ function ActionItems({ items, loading }) {
   )
 }
 
-function OverviewTab({ stats, dailyData, scoreDistrib, recentAttempts, categoryBreakdown, actionItems, isCapped, loading }) {
+function OverviewTab({ stats, dailyData, scoreDistrib, categoryBreakdown, actionItems, isCapped, loading }) {
   const navigate  = useNavigate()
   const [range, setRange] = useState("30d")
 
@@ -259,39 +259,6 @@ function OverviewTab({ stats, dailyData, scoreDistrib, recentAttempts, categoryB
 
       </div>
 
-      <div className="rounded-2xl border border-gray-800 bg-gray-900/60 p-5">
-        <div className="flex items-center justify-between mb-4">
-          <p className="text-sm font-bold text-white">Recent Activity</p>
-          <span className="text-[11px] text-gray-600">Last 8 attempts</span>
-        </div>
-        {loading
-          ? <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">{[1,2,3,4].map(i => <Skeleton key={i} className="h-16"/>)}</div>
-          : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
-              {recentAttempts.map(a => {
-                const p = pct(a.score, a.maxScore || a.totalQ)
-                return (
-                  <div key={a.id} onClick={() => navigate(`/attempt/${a.id}`)}
-                    className="flex items-center gap-3 bg-gray-800/40 hover:bg-gray-800/70 rounded-xl px-3 py-2.5 cursor-pointer transition group">
-                    <div className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 text-xs font-black ${
-                      p >= 70 ? "bg-emerald-500/15 text-emerald-400" : p >= 50 ? "bg-amber-500/15 text-amber-400" : "bg-rose-500/15 text-rose-400"}`}>
-                      {p}%
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-xs font-semibold text-gray-300 truncate group-hover:text-white transition">{a.userName || "User"}</p>
-                      <p className="text-[10px] text-gray-600 truncate">{a.quizTitle}</p>
-                      {a.batchName && (
-                        <span className="text-[9px] text-purple-400 bg-purple-500/10 px-1.5 py-0.5 rounded-full mt-0.5 inline-block">
-                          {a.batchName}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
-          )}
-      </div>
     </div>
   )
 }
@@ -878,8 +845,6 @@ export default function AdminPanel() {
       avg: dowCounts[i] > 0 ? dowTotals[i] / dowCounts[i] : 0,
     }))
 
-    const recentAttempts = [...attempts].sort((a, b) => new Date(b.date) - new Date(a.date)).slice(0, 8)
-
     const actionItems = []
     const passRate       = (scoreDistrib.slice(2).reduce((s, b) => s + b.count, 0) / Math.max(1, firstAttempts.length)) * 100
     const problemQuizzes = quizPerf.filter(q => q.attempts >= 5 && q.avg < 35)
@@ -901,7 +866,7 @@ export default function AdminPanel() {
     return {
       avgScore, dailyData, weeklyComparison, scoreDistrib,
       categoryBreakdown, quizPerf, topStudents, strugglingStudents,
-      mostImproved, goneSilent, batchPerf, recentAttempts,
+      mostImproved, goneSilent, batchPerf,
       dowPattern, actionItems,
     }
   }, [attempts, counts.quizzes])
@@ -1010,7 +975,6 @@ export default function AdminPanel() {
                 stats={stats}
                 dailyData={analytics?.dailyData ?? []}
                 scoreDistrib={analytics?.scoreDistrib ?? []}
-                recentAttempts={analytics?.recentAttempts ?? []}
                 categoryBreakdown={analytics?.categoryBreakdown ?? []}
                 actionItems={analytics?.actionItems ?? []}
                 isCapped={isCapped}
