@@ -405,15 +405,24 @@ function QuestionCard({ q, index, onChange, questions, activeIdx, setActiveIdx, 
   return (
     <div className="flex h-full min-h-0 overflow-hidden">
 
-      {/* ══ COL 1: Number buttons strip (80px) ══ */}
-      <div className="w-20 shrink-0 border-r border-white/6 flex flex-col bg-[#070a0f] min-h-0">
+      {/* ══ COL 1: Question palette (compact, 4-per-row) ══ */}
+      <div className="w-28 shrink-0 border-r border-white/6 flex flex-col bg-[#070a0f] min-h-0">
         {/* Header */}
-        <div className="px-1.5 py-2 border-b border-white/6 shrink-0 text-center">
+        <div className="px-2 py-2 border-b border-white/6 shrink-0 flex items-center justify-between">
           <p className="text-[8px] font-bold uppercase tracking-widest text-gray-600">{total} Qs</p>
+          <button onClick={addQuestion} title="Add question"
+            className="w-5 h-5 rounded flex items-center justify-center text-indigo-400 hover:text-white hover:bg-indigo-500/20 border border-indigo-500/25 transition">
+            <Plus size={9}/>
+          </button>
         </div>
-        {/* Scrollable number buttons — 2 per row */}
-        <div className="flex-1 overflow-y-auto px-2 py-2">
-          <div className="grid grid-cols-2 gap-1.5">
+        {/* Legend */}
+        <div className="flex items-center gap-2 px-2 py-1.5 border-b border-white/4">
+          <span className="flex items-center gap-1 text-[8px] text-gray-600"><span className="w-1.5 h-1.5 rounded-sm bg-emerald-500/60 inline-block"/>Done</span>
+          <span className="flex items-center gap-1 text-[8px] text-gray-600"><span className="w-1.5 h-1.5 rounded-sm bg-amber-500/60 inline-block"/>Part</span>
+        </div>
+        {/* Scrollable number buttons — 4 per row */}
+        <div className="flex-1 overflow-y-auto px-1.5 py-1.5">
+          <div className="grid grid-cols-4 gap-1">
             {questions.map((qItem, i) => {
               const isComplete = isQComplete(qItem)
               const isPartial  = qItem.question.trim() && !isComplete
@@ -423,52 +432,62 @@ function QuestionCard({ q, index, onChange, questions, activeIdx, setActiveIdx, 
                   key={i}
                   onClick={() => setActiveIdx(i)}
                   title={qItem.question ? qItem.question.split("\n")[0].slice(0,60) : `Q${i+1}`}
-                  className={`w-full aspect-square rounded-md flex items-center justify-center text-[11px] font-black border transition-all ${
+                  className={`w-full aspect-square rounded flex items-center justify-center text-[9px] font-black border transition-all ${
                     isCurrent
-                      ? "bg-indigo-500 border-indigo-400 text-white shadow-md shadow-indigo-500/30 scale-105"
+                      ? "bg-indigo-500 border-indigo-400 text-white shadow-md shadow-indigo-500/30 scale-110 z-10 relative"
                       : isComplete
                       ? "bg-emerald-500/20 border-emerald-500/30 text-emerald-300 hover:bg-emerald-500/30"
                       : isPartial
                       ? "bg-amber-500/20 border-amber-500/30 text-amber-300 hover:bg-amber-500/30"
-                      : "bg-white/5 border-white/10 text-gray-400 hover:bg-white/10 hover:text-gray-200"
+                      : "bg-white/5 border-white/10 text-gray-500 hover:bg-white/10 hover:text-gray-300"
                   }`}
                 >
                   {i+1}
                 </button>
               )
             })}
-            
           </div>
         </div>
+        {/* Footer: Delete current */}
+        {total > 1 && (
+          <div className="border-t border-white/6 px-2 py-2 shrink-0">
+            <button onClick={() => removeQuestion(activeIdx)}
+              className="w-full flex items-center justify-center gap-1 text-[9px] font-bold text-rose-400/70 hover:text-rose-400 hover:bg-rose-500/8 border border-rose-500/15 hover:border-rose-500/30 rounded py-1.5 transition">
+              <Trash2 size={8}/> Del Q{activeIdx+1}
+            </button>
+          </div>
+        )}
       </div>
 
-      {/* ══ COL 2: Question textarea (top) + Question list (bottom) ══ */}
+      {/* ══ COL 2: Question editor (top) + Question list (bottom) ══ */}
       <div className="flex flex-col border-r border-white/6 min-h-0 flex-1">
 
-        {/* Panel header with type tabs */}
-        <div className="flex items-center justify-between px-3 py-2 border-b border-white/6 bg-[#0a0d13] shrink-0">
-          <div className="flex items-center gap-1.5">
-            <div className={`w-4 h-4 rounded flex items-center justify-center text-[8px] font-black border transition-all ${
-              complete ? "bg-emerald-500 border-emerald-400 text-white" : "bg-indigo-500/15 border-indigo-500/30 text-indigo-400"
+        {/* Panel header: Q number + status + type tabs — bigger, readable */}
+        <div className="flex items-center justify-between px-3 py-2 border-b border-white/6 bg-[#0a0d13] shrink-0 gap-2">
+          <div className="flex items-center gap-2 shrink-0">
+            <div className={`w-5 h-5 rounded-md flex items-center justify-center text-[9px] font-black border transition-all ${
+              complete ? "bg-emerald-500 border-emerald-400 text-white shadow-sm shadow-emerald-500/30" : "bg-indigo-500/15 border-indigo-500/30 text-indigo-400"
             }`}>
-              {complete ? <Check size={8}/> : index+1}
+              {complete ? <Check size={9}/> : index+1}
             </div>
-            <span className="text-[10px] font-bold text-white">Question</span>
-            <span className="text-[8px] text-indigo-400">required</span>
+            <span className="text-[11px] font-bold text-white">Question</span>
+            {!complete && <span className="text-[9px] text-amber-400/80 bg-amber-500/8 border border-amber-500/20 px-1.5 py-0.5 rounded-full">incomplete</span>}
+            {complete && <span className="text-[9px] text-emerald-400/80 bg-emerald-500/8 border border-emerald-500/20 px-1.5 py-0.5 rounded-full">ready ✓</span>}
           </div>
-          <div className="flex gap-0.5 bg-white/4 rounded p-0.5 border border-white/6">
+          {/* Type selector — readable 10px text */}
+          <div className="flex gap-0.5 bg-white/4 rounded-lg p-0.5 border border-white/8">
             {TYPE_TABS.map(t=>(
               <button key={t.id} onClick={()=>handleTypeChange(t.id)}
-                className={`px-1.5 py-0.5 rounded text-[8px] font-bold transition-all ${
-                  qType===t.id ? "bg-indigo-500 text-white" : "text-gray-500 hover:text-gray-300"
+                className={`px-2.5 py-1 rounded-md text-[10px] font-bold transition-all ${
+                  qType===t.id ? "bg-indigo-500 text-white shadow-sm" : "text-gray-400 hover:text-gray-200 hover:bg-white/4"
                 }`}>{t.label}
               </button>
             ))}
           </div>
         </div>
 
-        {/* Question textarea — fills ~40% of col2 height */}
-        <div className="p-2 shrink-0" style={{height:"40%"}}>
+        {/* Question textarea — 46% height, more breathing room */}
+        <div className="p-2.5 shrink-0" style={{height:"46%"}}>
           {qType==="match" ? (
             <div className="h-full overflow-y-auto">
               <MatchBuilder value={q.question} onChange={v=>onChange(index,"question",v)}/>
@@ -484,20 +503,23 @@ function QuestionCard({ q, index, onChange, questions, activeIdx, setActiveIdx, 
                   ? "अभिकथन (A): …\nकारण (R): …\nसही विकल्प चुनें:"
                   : "Type your question here…"
               }
-              className="w-full h-full bg-[#0d1117] text-white text-sm rounded-lg px-3 py-2.5 border border-white/8 focus:border-indigo-500/50 focus:outline-none focus:ring-2 focus:ring-indigo-500/10 placeholder-gray-600 transition-all resize-none leading-relaxed"
+              className="w-full h-full bg-[#0d1117] text-white text-sm rounded-lg px-3.5 py-3 border border-white/8 focus:border-indigo-500/50 focus:outline-none focus:ring-2 focus:ring-indigo-500/10 placeholder-gray-600 transition-all resize-none leading-relaxed"
             />
           )}
         </div>
 
-        {/* Divider */}
-        <div className="border-t border-white/6 mx-2 shrink-0"/>
+        {/* Question list header */}
+        <div className="flex items-center justify-between px-3 py-1.5 border-t border-b border-white/6 bg-[#0a0d13] shrink-0">
+          <p className="text-[9px] font-bold uppercase tracking-widest text-gray-600">All Questions · {total}</p>
+          <button onClick={addQuestion}
+            className="flex items-center gap-1 text-[9px] font-bold text-indigo-400/80 hover:text-indigo-300 hover:bg-indigo-500/10 px-2 py-0.5 rounded transition">
+            <Plus size={8}/> Add
+          </button>
+        </div>
 
-        {/* Question list — scrollable, fills remaining space */}
+        {/* Question list — compact single-line rows */}
         <div className="flex-1 overflow-y-auto min-h-0">
-          <div className="px-2 py-1.5 border-b border-white/6 sticky top-0 bg-[#0a0d13] z-10">
-            <p className="text-[8px] font-bold uppercase tracking-widest text-gray-600">All Questions · {total}</p>
-          </div>
-          <div className="py-1">
+          <div className="py-0.5">
             {questions.map((qItem, i) => {
               const isComplete = isQComplete(qItem)
               const isPartial  = qItem.question.trim() && !isComplete
@@ -507,29 +529,27 @@ function QuestionCard({ q, index, onChange, questions, activeIdx, setActiveIdx, 
                 <button
                   key={i}
                   onClick={() => setActiveIdx(i)}
-                  className={`w-full flex items-start gap-2 px-2.5 py-2 text-left transition-all border-b border-white/4 last:border-0 ${
+                  className={`w-full flex items-center gap-2 px-3 py-1.5 text-left transition-all ${
                     isCurrent
-                      ? "bg-indigo-500/12 border-l-2 border-l-indigo-500"
+                      ? "bg-indigo-500/10 border-l-2 border-l-indigo-500"
                       : "hover:bg-white/3 border-l-2 border-l-transparent"
                   }`}
                 >
-                  {/* Status dot */}
-                  <span className={`w-1.5 h-1.5 rounded-full mt-1.5 shrink-0 ${
+                  <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${
                     isCurrent   ? "bg-indigo-400"
                     :isComplete ? "bg-emerald-400"
                     :isPartial  ? "bg-amber-400"
-                    :"bg-gray-600"
+                    :"bg-gray-700"
                   }`}/>
-                  {/* Number */}
-                  <span className={`text-[9px] font-black shrink-0 mt-0.5 w-4 ${
-                    isCurrent?"text-indigo-400":isComplete?"text-emerald-400":isPartial?"text-amber-400":"text-gray-600"
+                  <span className={`text-[9px] font-black shrink-0 w-5 tabular-nums ${
+                    isCurrent?"text-indigo-300":isComplete?"text-emerald-400":isPartial?"text-amber-400":"text-gray-600"
                   }`}>{i+1}</span>
-                  {/* Question text preview */}
-                  <span className={`text-[11px] leading-snug flex-1 line-clamp-2 ${
-                    isCurrent?"text-white":isComplete?"text-gray-300":"text-gray-500"
+                  <span className={`text-[11px] flex-1 truncate ${
+                    isCurrent?"text-white font-medium":isComplete?"text-gray-300":"text-gray-500"
                   }`}>
                     {firstLine || <em className="opacity-40">Empty question</em>}
                   </span>
+                  {isComplete && <span className="text-[9px] font-black text-emerald-400/60 shrink-0">{LABELS[qItem.correct]}</span>}
                 </button>
               )
             })}
@@ -537,16 +557,17 @@ function QuestionCard({ q, index, onChange, questions, activeIdx, setActiveIdx, 
         </div>
       </div>
 
-      {/* ══ COL 3: 4 options as 2×2 grid — fixed 45% ══ */}
-      <div className="flex flex-col min-h-0 overflow-hidden shrink-0" style={{width:"45%"}}>
-        {/* Panel header */}
+      {/* ══ COL 3: 4 options as 2×2 grid — fixed 44% ══ */}
+      <div className="flex flex-col min-h-0 overflow-hidden shrink-0" style={{width:"44%"}}>
+        {/* Panel header — clear instruction */}
         <div className="flex items-center justify-between px-3 py-2 border-b border-white/6 bg-[#0a0d13] shrink-0">
           <div className="flex items-center gap-2">
             <span className="text-[11px] font-bold text-white">Options</span>
             <span className="text-[9px] text-gray-500">answer + explanation</span>
           </div>
-          <span className="text-[9px] text-gray-600 bg-white/4 border border-white/6 px-2 py-0.5 rounded-full">
-            Click letter to mark correct
+          {/* Prominent hint — not tiny ghost text */}
+          <span className="flex items-center gap-1 text-[9px] font-semibold text-indigo-400/80 bg-indigo-500/8 border border-indigo-500/20 px-2 py-0.5 rounded-full">
+            <span className="font-black">A B C D</span> to mark correct
           </span>
         </div>
 
@@ -561,42 +582,52 @@ function QuestionCard({ q, index, onChange, questions, activeIdx, setActiveIdx, 
               <div key={j} className={`flex flex-col min-h-0 overflow-hidden transition-colors ${borderR} ${borderB} ${
                 isCorrect ? "bg-emerald-500/4" : ""
               }`}>
+                {/* Option header — click to mark correct */}
                 <button
                   type="button"
                   onClick={()=>onChange(index,"correct",j)}
+                  title={isCorrect ? "Correct answer" : "Click to mark as correct answer"}
                   className={`flex items-center gap-2 px-3 py-1.5 shrink-0 w-full text-left transition-colors ${
-                    isCorrect ? "bg-emerald-500/10 hover:bg-emerald-500/15" : `${c.hdr} hover:bg-white/5`
+                    isCorrect ? "bg-emerald-500/12 hover:bg-emerald-500/18" : `${c.hdr} hover:bg-white/5`
                   }`}
                 >
-                  <span className={`w-5 h-5 rounded flex items-center justify-center text-[10px] font-black shrink-0 transition-all ${
+                  <span className={`w-6 h-6 rounded-md flex items-center justify-center text-[11px] font-black shrink-0 transition-all ${
                     isCorrect ? "bg-emerald-500 text-white shadow-md shadow-emerald-500/30" : `${c.tag} text-white`
                   }`}>{LABELS[j]}</span>
-                  <span className={`text-[10px] font-semibold flex-1 ${isCorrect ? "text-emerald-400" : c.txt}`}>
-                    {isCorrect ? "✓ Correct answer" : "Mark as correct"}
+                  <span className={`text-[10px] font-bold flex-1 ${isCorrect ? "text-emerald-300" : "text-gray-500"}`}>
+                    {isCorrect ? "✓ Correct answer" : <span className="text-gray-600 group-hover:text-gray-400">Mark as correct</span>}
                   </span>
-                  {isCorrect && <CheckCircle size={10} className="text-emerald-400 shrink-0"/>}
+                  {isCorrect
+                    ? <CheckCircle size={11} className="text-emerald-400 shrink-0"/>
+                    : <span className="text-[8px] text-gray-700 shrink-0">click</span>
+                  }
                 </button>
-                <div className="flex-1 flex flex-col gap-1.5 px-2.5 pb-2.5 pt-1.5 min-h-0">
+                {/* Input fields */}
+                <div className="flex-1 flex flex-col gap-1.5 px-2.5 pb-2.5 pt-2 min-h-0">
                   <input
                     value={o.text}
                     onChange={e=>updateOption(j,"text",e.target.value)}
                     placeholder="Answer text…"
-                    className={`w-full bg-[#0d1117] rounded px-2.5 py-1.5 text-[13px] border focus:outline-none focus:ring-1 placeholder-gray-600 transition-all shrink-0 ${
+                    className={`w-full bg-[#0d1117] rounded-lg px-2.5 py-2 text-[13px] border focus:outline-none focus:ring-1 placeholder-gray-600 transition-all shrink-0 ${
                       isCorrect
                         ? "text-emerald-200 border-emerald-500/25 focus:border-emerald-400/50 focus:ring-emerald-500/10"
                         : "text-gray-200 border-white/8 focus:border-white/20 focus:ring-white/5"
                     }`}
                   />
-                  <textarea
-                    value={o.explanation}
-                    onChange={e=>updateOption(j,"explanation",e.target.value)}
-                    placeholder="Explanation (shown after answer is revealed)…"
-                    className={`flex-1 w-full bg-[#0d1117] rounded px-2.5 py-1.5 text-[11px] border focus:outline-none focus:ring-1 placeholder-gray-600 transition-all resize-none leading-relaxed min-h-0 ${
-                      isCorrect
-                        ? "text-emerald-300/80 border-emerald-500/20 focus:border-emerald-400/40 focus:ring-emerald-500/8"
-                        : "text-gray-400 border-white/6 focus:border-white/15 focus:ring-white/4"
-                    }`}
-                  />
+                  {/* Explanation label + textarea */}
+                  <div className="flex-1 flex flex-col min-h-0">
+                    <p className="text-[8px] font-bold uppercase tracking-widest text-gray-600 mb-1 shrink-0">Explanation</p>
+                    <textarea
+                      value={o.explanation}
+                      onChange={e=>updateOption(j,"explanation",e.target.value)}
+                      placeholder="Why is this option correct/wrong?"
+                      className={`flex-1 w-full bg-[#0d1117] rounded-lg px-2.5 py-1.5 text-[11px] border focus:outline-none focus:ring-1 placeholder-gray-600 transition-all resize-none leading-relaxed min-h-0 ${
+                        isCorrect
+                          ? "text-emerald-300/80 border-emerald-500/20 focus:border-emerald-400/40 focus:ring-emerald-500/8"
+                          : "text-gray-400 border-white/6 focus:border-white/15 focus:ring-white/4"
+                      }`}
+                    />
+                  </div>
                 </div>
               </div>
             )
@@ -715,14 +746,8 @@ function StepQuestions({ questions, setQuestions, mode, setMode, onNext, onBack 
             <div className="flex items-center gap-1 ml-1">
               <button onClick={addQuestion}
                 className="flex items-center gap-1 text-[10px] font-bold bg-indigo-500/15 hover:bg-indigo-500/25 text-indigo-400 border border-indigo-500/30 px-2 py-1 rounded-lg transition">
-                <Plus size={10}/> Add
+                <Plus size={10}/> Add Q
               </button>
-              {total>1 && safeIdx>=0 && (
-                <button onClick={()=>setDeleteConfirm({index:safeIdx})}
-                  className="flex items-center gap-1 text-[10px] font-bold bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/25 px-2 py-1 rounded-lg transition">
-                  <Trash2 size={10}/> Del Q{safeIdx+1}
-                </button>
-              )}
             </div>
           )}
         </div>
