@@ -40,158 +40,225 @@ function qStatus(q) {
   return "complete"
 }
 
-// ─── Collapsible Quiz Details ─────────────────────────────────────────────────
-function QuizDetailsAccordion({ meta, onChange, questionCount }) {
-  const issues   = metaIssues(meta)
-  const hasIssue = issues.length > 0
-  const [open, setOpen] = useState(hasIssue)
-  useEffect(() => { if (hasIssue) setOpen(true) }, [hasIssue])
+// ─── Quiz Details Modal ───────────────────────────────────────────────────────
+function QuizDetailsModal({ meta, onChange, questionCount, onClose }) {
+  const [draft, setDraft] = useState({ ...meta })
+  const issues = metaIssues(draft)
 
-  const diff = DIFF_CFG[meta?.difficulty] || DIFF_CFG.medium
+  function set(f, v) { setDraft(d => ({ ...d, [f]: v })) }
+
+  function handleApply() {
+    if (!draft.title?.trim()) return toast.error("Title is required")
+    if (!draft.totalTime)     return toast.error("Duration is required")
+    Object.keys(draft).forEach(f => onChange(f, draft[f]))
+    onClose()
+  }
+
+  const diff = DIFF_CFG[draft.difficulty] || DIFF_CFG.medium
+
+  const Field = ({ label, labelCls = "text-gray-400", children }) => (
+    <div>
+      <label className={`block text-[10px] font-bold uppercase tracking-widest mb-1.5 ${labelCls}`}>{label}</label>
+      {children}
+    </div>
+  )
+
+  const inputCls = (err) =>
+    `w-full bg-[#0d1117] text-white rounded-lg px-3 py-2.5 border focus:outline-none text-sm placeholder-gray-600 transition ${
+      err ? "border-amber-500/50 focus:border-amber-400" : "border-white/8 focus:border-cyan-500/50"
+    }`
 
   return (
-    <div className={`border-b transition-colors duration-200 ${hasIssue ? "border-amber-500/25" : "border-gray-800/60"}`}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      {/* Backdrop */}
+      <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={onClose} />
 
-      {/* ── Header ── */}
-      <button
-        onClick={() => setOpen(o => !o)}
-        className={`w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-gray-800/20 transition-colors ${hasIssue ? "bg-amber-500/4" : ""}`}
-      >
-        <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${
-          hasIssue ? "bg-amber-500/12 border border-amber-500/25" : "bg-gray-800/70 border border-gray-700/40"
-        }`}>
-          {hasIssue ? <AlertTriangle size={12} className="text-amber-400" /> : <Settings2 size={12} className="text-gray-400" />}
+      {/* Modal */}
+      <div className="relative w-full max-w-lg bg-[#0a0d13] border border-white/10 rounded-2xl shadow-2xl shadow-black/60 overflow-hidden">
+
+        {/* Header */}
+        <div className="flex items-center justify-between px-5 py-4 border-b border-white/8">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-lg bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center">
+              <Settings2 size={14} className="text-cyan-400" />
+            </div>
+            <div>
+              <h2 className="text-sm font-bold text-white">Quiz Details</h2>
+              <p className="text-[10px] text-gray-500">{questionCount} questions · changes apply on modal close</p>
+            </div>
+          </div>
+          {issues.length > 0 && (
+            <span className="flex items-center gap-1 text-[10px] font-bold text-amber-400 bg-amber-500/10 border border-amber-500/20 px-2 py-1 rounded-full">
+              <AlertTriangle size={9} /> {issues.length} required
+            </span>
+          )}
         </div>
 
+        {/* Body */}
+        <div className="px-5 py-4 space-y-4 max-h-[70vh] overflow-y-auto">
+
+          {/* Title */}
+          <Field label={<>Title <span className="text-red-400 normal-case">*</span></>}>
+            <input value={draft.title || ""} onChange={e => set("title", e.target.value)}
+              placeholder="e.g. Uttarakhand GK Set 1"
+              className={inputCls(!draft.title?.trim())}
+              autoFocus
+            />
+          </Field>
+
+          {/* Description */}
+          <Field label="Description" labelCls="text-gray-500">
+            <input value={draft.description || ""} onChange={e => set("description", e.target.value)}
+              placeholder="Short description shown to students — optional"
+              className={inputCls(false)}
+            />
+          </Field>
+
+          {/* Subject + Topic */}
+          <div className="grid grid-cols-2 gap-3">
+            <Field label={<><Tag size={9} className="inline mr-0.5" />Subject</>}>
+              <input value={draft.category || ""} onChange={e => set("category", e.target.value)}
+                placeholder="e.g. GK, Science"
+                className={inputCls(false)}
+              />
+            </Field>
+            <Field label={<><Tag size={9} className="inline mr-0.5" />Topic</>} labelCls="text-indigo-400/80">
+              <input value={draft.topic || ""} onChange={e => set("topic", e.target.value)}
+                placeholder="e.g. Mughal Empire"
+                className="w-full bg-[#0d1117] text-white rounded-lg px-3 py-2.5 border border-indigo-500/25 focus:border-indigo-500/50 focus:outline-none text-sm placeholder-gray-600 transition"
+              />
+            </Field>
+          </div>
+
+          {/* Difficulty + Duration */}
+          <div className="grid grid-cols-2 gap-3">
+            <Field label={<><BarChart2 size={9} className="inline mr-0.5" />Difficulty</>}>
+              <div className="flex gap-1.5">
+                {["easy","medium","hard"].map(d => (
+                  <button key={d} onClick={() => set("difficulty", d)}
+                    className={`flex-1 py-2 rounded-lg text-xs font-bold border transition-all ${
+                      draft.difficulty === d
+                        ? d === "easy"   ? "bg-emerald-500/20 border-emerald-500/40 text-emerald-300"
+                        : d === "medium" ? "bg-amber-500/20 border-amber-500/40 text-amber-300"
+                                         : "bg-rose-500/20 border-rose-500/40 text-rose-300"
+                        : "bg-white/4 border-white/8 text-gray-500 hover:bg-white/8 hover:text-gray-300"
+                    }`}>
+                    {d === "easy" ? "Easy" : d === "medium" ? "Med" : "Hard"}
+                  </button>
+                ))}
+              </div>
+            </Field>
+            <Field label={<><Clock size={9} className="inline mr-0.5" />Duration (min) <span className="text-red-400">*</span></>}>
+              <input type="number" min={1} max={180} value={draft.totalTime || ""} onChange={e => set("totalTime", e.target.value)}
+                placeholder="60"
+                className={inputCls(!draft.totalTime)}
+              />
+            </Field>
+          </div>
+
+          {/* Marking scheme */}
+          <div className="grid grid-cols-3 gap-3">
+            <Field label={<><Zap size={9} className="inline mr-0.5 text-emerald-400" /><span className="text-emerald-400">+</span> Correct</>}>
+              <input type="number" min={0.25} max={10} step={0.25} value={draft.marksPerQ || ""} onChange={e => set("marksPerQ", parseFloat(e.target.value) || 1)}
+                className={inputCls(false)}
+              />
+            </Field>
+            <Field label={<><Minus size={9} className="inline mr-0.5 text-rose-400" /><span className="text-rose-400">−</span> Wrong</>}>
+              <input type="number" min={0} max={5} step={0.25} value={draft.negativeMark ?? ""} onChange={e => set("negativeMark", parseFloat(e.target.value) || 0)}
+                className={inputCls(false)}
+              />
+            </Field>
+            <Field label={<><CalendarClock size={9} className="inline mr-0.5" />Expiry</>}>
+              <input type="datetime-local" value={draft.expiryDate || ""} onChange={e => set("expiryDate", e.target.value)}
+                className="w-full bg-[#0d1117] text-white rounded-lg px-3 py-2.5 border border-white/8 focus:border-cyan-500/50 focus:outline-none text-xs transition"
+              />
+            </Field>
+          </div>
+
+          {/* Score preview */}
+          <div className="flex items-center justify-between bg-white/4 border border-white/6 rounded-xl px-4 py-3">
+            <div className="flex items-center gap-3 text-xs">
+              <span className="text-emerald-400 font-bold">+{draft.marksPerQ || 1} correct</span>
+              <span className="text-gray-600">·</span>
+              <span className="text-rose-400 font-bold">−{draft.negativeMark || 0} wrong</span>
+            </div>
+            <div className="text-xs text-gray-500">
+              Max score: <span className="text-white font-bold">{((draft.marksPerQ || 1) * questionCount).toFixed(2)}</span> pts
+            </div>
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div className="flex items-center justify-end gap-2 px-5 py-4 border-t border-white/8 bg-white/2">
+          <button onClick={onClose}
+            className="px-4 py-2 rounded-lg text-xs font-bold text-gray-400 hover:text-white bg-white/5 hover:bg-white/10 border border-white/8 transition">
+            Cancel
+          </button>
+          <button onClick={handleApply}
+            className="flex items-center gap-1.5 px-5 py-2 rounded-lg text-xs font-bold bg-cyan-500 hover:bg-cyan-400 text-gray-900 transition">
+            <CheckCircle size={12} /> Apply Changes
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ─── Compact Quiz Details Bar (Col 1 top) ─────────────────────────────────────
+function QuizDetailsBar({ meta, onEdit, questionCount }) {
+  const issues = metaIssues(meta)
+  const diff   = DIFF_CFG[meta?.difficulty] || DIFF_CFG.medium
+
+  return (
+    <div className={`border-b shrink-0 ${issues.length > 0 ? "border-amber-500/25" : "border-gray-800/60"}`}>
+      <button
+        onClick={onEdit}
+        className={`w-full flex items-center gap-2.5 px-3 py-2.5 text-left hover:bg-white/3 transition-colors group ${
+          issues.length > 0 ? "bg-amber-500/3" : ""
+        }`}
+      >
+        {/* Icon */}
+        <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 transition-colors ${
+          issues.length > 0
+            ? "bg-amber-500/12 border border-amber-500/25"
+            : "bg-gray-800/70 border border-gray-700/40 group-hover:border-cyan-500/30 group-hover:bg-cyan-500/8"
+        }`}>
+          {issues.length > 0
+            ? <AlertTriangle size={12} className="text-amber-400" />
+            : <Settings2 size={12} className="text-gray-400 group-hover:text-cyan-400 transition-colors" />
+          }
+        </div>
+
+        {/* Info */}
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2">
-            <span className="text-xs font-bold text-white">Quiz Details</span>
-            {hasIssue && (
-              <span className="text-[9px] font-bold text-amber-400 bg-amber-500/10 border border-amber-500/20 px-1.5 py-0.5 rounded-full uppercase tracking-wide">
-                {issues.length} missing
+          <div className="flex items-center gap-1.5">
+            <span className="text-xs font-bold text-white truncate max-w-[88px]">
+              {meta.title || <span className="text-gray-600 italic font-normal">Untitled</span>}
+            </span>
+            {issues.length > 0 && (
+              <span className="text-[9px] font-bold text-amber-400 bg-amber-500/10 border border-amber-500/20 px-1 py-0.5 rounded-full shrink-0">
+                !{issues.length}
               </span>
             )}
           </div>
-          {/* Collapsed pill summary */}
-          {!open && !hasIssue && (
-            <div className="flex items-center gap-1.5 mt-0.5 overflow-hidden">
-              <span className="text-[10px] text-gray-400 truncate max-w-[160px] font-medium">{meta.title}</span>
-              {meta.category && <><span className="text-gray-700 text-[10px]">·</span><span className="text-[10px] text-gray-500">{meta.category}</span></>}
-              <span className="text-gray-700 text-[10px]">·</span>
-              <span className={`text-[10px] font-semibold flex items-center gap-0.5 ${diff.text}`}>
-                <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${diff.dot}`} />{meta.difficulty}
-              </span>
-              <span className="text-gray-700 text-[10px]">·</span>
-              <span className="text-[10px] text-gray-500">{meta.totalTime || 10}m</span>
-              <span className="text-gray-700 text-[10px]">·</span>
-              <span className="text-[10px] text-emerald-400 font-semibold">+{meta.marksPerQ || 1}</span>
-              {(meta.negativeMark || 0) > 0 && <span className="text-[10px] text-rose-400 font-semibold">−{meta.negativeMark}</span>}
-            </div>
-          )}
+          <div className="flex items-center gap-1.5 mt-0.5">
+            <span className={`text-[9px] font-semibold flex items-center gap-0.5 ${diff.text}`}>
+              <span className={`w-1.5 h-1.5 rounded-full ${diff.dot}`}/>
+              {meta.difficulty || "medium"}
+            </span>
+            <span className="text-gray-700 text-[9px]">·</span>
+            <span className="text-[9px] text-gray-500">{meta.totalTime || "—"}m</span>
+            <span className="text-gray-700 text-[9px]">·</span>
+            <span className="text-[9px] text-emerald-400 font-bold">+{meta.marksPerQ || 1}</span>
+            {(meta.negativeMark || 0) > 0 && (
+              <span className="text-[9px] text-rose-400 font-bold">−{meta.negativeMark}</span>
+            )}
+          </div>
         </div>
-        <ChevronDown size={13} className={`text-gray-600 shrink-0 transition-transform duration-200 ${open ? "rotate-180" : ""}`} />
+
+        {/* Edit hint */}
+        <span className="text-[9px] text-gray-600 group-hover:text-cyan-500 transition-colors shrink-0 font-medium">Edit ›</span>
       </button>
-
-      {/* ── Body ── */}
-      {open && (
-        <div className="px-4 pb-4 space-y-3">
-          {/* Title */}
-          <div>
-            <label className="block text-[10px] font-bold uppercase tracking-widest text-gray-500 mb-1.5">
-              Title <span className="text-red-400">*</span>
-            </label>
-            <input value={meta.title || ""} onChange={e => onChange("title", e.target.value)}
-              placeholder="e.g. Uttarakhand GK Set 1"
-              className={`w-full bg-gray-800/60 text-white rounded-lg px-3 py-2 border focus:outline-none text-sm placeholder-gray-600 transition ${
-                !meta.title?.trim() ? "border-amber-500/40 focus:border-amber-400" : "border-gray-700/60 focus:border-cyan-500/50"
-              }`}
-            />
-          </div>
-
-          {/* Description */}
-          <div>
-            <label className="block text-[10px] font-bold uppercase tracking-widest text-gray-500 mb-1.5">
-              Description <span className="text-gray-600 normal-case font-normal tracking-normal ml-1">— optional</span>
-            </label>
-            <input value={meta.description || ""} onChange={e => onChange("description", e.target.value)}
-              placeholder="Short description shown to students"
-              className="w-full bg-gray-800/60 text-white rounded-lg px-3 py-2 border border-gray-700/60 focus:border-cyan-500/50 focus:outline-none text-sm placeholder-gray-600 transition"
-            />
-          </div>
-
-          {/* Row: Category · Topic · Difficulty · Duration */}
-          <div className="grid grid-cols-4 gap-2">
-            <div className="col-span-1">
-              <label className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-widest text-gray-500 mb-1.5"><Tag size={9}/>Subject</label>
-              <input value={meta.category || ""} onChange={e => onChange("category", e.target.value)}
-                placeholder="e.g. GK, Science"
-                className="w-full bg-gray-800/60 text-white rounded-lg px-3 py-2 border border-gray-700/60 focus:border-cyan-500/50 focus:outline-none text-sm placeholder-gray-600 transition"
-              />
-            </div>
-            <div className="col-span-1">
-              <label className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-widest text-indigo-400/80 mb-1.5"><Tag size={9}/>Topic</label>
-              <input value={meta.topic || ""} onChange={e => onChange("topic", e.target.value)}
-                placeholder="e.g. Ch.3 Mughal Empire"
-                className="w-full bg-gray-800/60 text-white rounded-lg px-3 py-2 border border-indigo-500/30 focus:border-indigo-500/50 focus:outline-none text-sm placeholder-gray-600 transition"
-              />
-            </div>
-            <div>
-              <label className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-widest text-gray-500 mb-1.5"><BarChart2 size={9}/>Diff</label>
-              <select value={meta.difficulty || "medium"} onChange={e => onChange("difficulty", e.target.value)}
-                className="w-full bg-gray-800/60 text-white rounded-lg px-2.5 py-2 border border-gray-700/60 focus:border-cyan-500/50 focus:outline-none text-sm cursor-pointer transition">
-                <option value="easy">Easy</option>
-                <option value="medium">Med</option>
-                <option value="hard">Hard</option>
-              </select>
-            </div>
-            <div>
-              <label className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-widest text-gray-500 mb-1.5"><Clock size={9}/>Min <span className="text-red-400">*</span></label>
-              <input type="number" min={1} max={180} value={meta.totalTime || ""} onChange={e => onChange("totalTime", e.target.value)}
-                className={`w-full bg-gray-800/60 text-white rounded-lg px-3 py-2 border focus:outline-none text-sm transition ${
-                  !meta.totalTime ? "border-amber-500/40 focus:border-amber-400" : "border-gray-700/60 focus:border-cyan-500/50"
-                }`}
-              />
-            </div>
-          </div>
-
-          {/* Row: Expiry · +Correct · −Wrong */}
-          <div className="grid grid-cols-3 gap-2">
-            <div>
-              <label className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-widest text-gray-500 mb-1.5"><CalendarClock size={9}/>Expiry</label>
-              <input type="datetime-local" value={meta.expiryDate || ""} onChange={e => onChange("expiryDate", e.target.value)}
-                className="w-full bg-gray-800/60 text-white rounded-lg px-3 py-2 border border-gray-700/60 focus:border-cyan-500/50 focus:outline-none text-xs transition"
-              />
-            </div>
-            <div>
-              <label className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-widest text-gray-500 mb-1.5">
-                <Zap size={9} className="text-emerald-400"/><span className="text-emerald-400">+</span>Correct
-              </label>
-              <input type="number" min={0.25} max={10} step={0.25} value={meta.marksPerQ || ""} onChange={e => onChange("marksPerQ", parseFloat(e.target.value) || 1)}
-                className="w-full bg-gray-800/60 text-white rounded-lg px-3 py-2 border border-gray-700/60 focus:border-emerald-500/40 focus:outline-none text-sm transition"
-              />
-            </div>
-            <div>
-              <label className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-widest text-gray-500 mb-1.5">
-                <Minus size={9} className="text-rose-400"/><span className="text-rose-400">−</span>Wrong
-              </label>
-              <input type="number" min={0} max={5} step={0.25} value={meta.negativeMark ?? ""} onChange={e => onChange("negativeMark", parseFloat(e.target.value) || 0)}
-                className="w-full bg-gray-800/60 text-white rounded-lg px-3 py-2 border border-gray-700/60 focus:border-rose-500/40 focus:outline-none text-sm transition"
-              />
-            </div>
-          </div>
-
-          {/* Scoring preview */}
-          <div className="flex items-center justify-between bg-gray-800/40 border border-gray-700/25 rounded-lg px-3 py-2 text-[11px]">
-            <span className="text-gray-500">
-              <span className="text-emerald-400 font-bold">+{meta.marksPerQ || 1}</span> correct ·{" "}
-              <span className="text-rose-400 font-bold">−{meta.negativeMark || 0}</span> wrong
-            </span>
-            <span className="text-gray-500">
-              Max: <span className="text-white font-bold">{((meta.marksPerQ || 1) * questionCount).toFixed(2)}</span> pts
-            </span>
-          </div>
-        </div>
-      )}
     </div>
   )
 }
@@ -267,6 +334,7 @@ export default function QuizEditor() {
   const [activeQ, setActiveQ]     = useState(0)
   const [saving, setSaving]       = useState(false)
   const [loading, setLoading]     = useState(true)
+  const [detailsOpen, setDetailsOpen] = useState(false)
   const rightRef = useRef(null)
 
   // Keyboard nav: ← → arrow keys
@@ -295,6 +363,8 @@ export default function QuizEditor() {
         })
         const qSnap = await getDocs(query(collection(db, "quizSets", id, "questions"), orderBy("order")))
         setQuestions(qSnap.docs.map(d => ({ _id: d.id, ...d.data() })))
+        // auto-open modal if required fields are missing
+        if (!data.title?.trim() || !data.totalTime) setDetailsOpen(true)
       } catch (e) { console.error(e); toast.error("Failed to load quiz") }
       setLoading(false)
     }
@@ -449,9 +519,9 @@ export default function QuizEditor() {
           {/* ══ COL 1: Quiz details accordion + Question palette ══ */}
           <div className="w-48 shrink-0 border-r border-gray-800/70 flex flex-col overflow-hidden bg-gray-950">
 
-            {/* Quiz details accordion */}
+          {/* Quiz details compact bar */}
             {meta && (
-              <QuizDetailsAccordion meta={meta} onChange={handleMetaChange} questionCount={questions.length} />
+              <QuizDetailsBar meta={meta} onEdit={() => setDetailsOpen(true)} questionCount={questions.length} />
             )}
 
             {/* Palette header */}
@@ -702,6 +772,16 @@ export default function QuizEditor() {
           )}
 
         </div>
+        {/* Quiz Details Modal */}
+        {detailsOpen && meta && (
+          <QuizDetailsModal
+            meta={meta}
+            onChange={handleMetaChange}
+            questionCount={questions.length}
+            onClose={() => setDetailsOpen(false)}
+          />
+        )}
+
       </div>
     </AdminLayout>
   )
