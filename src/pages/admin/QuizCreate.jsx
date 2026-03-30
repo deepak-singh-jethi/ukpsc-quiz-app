@@ -405,24 +405,24 @@ function QuestionCard({ q, index, onChange, questions, activeIdx, setActiveIdx, 
   return (
     <div className="flex h-full min-h-0 overflow-hidden w-full">
 
-      {/* ══ COL 1: Question palette (compact, 4-per-row) ══ */}
-      <div className="w-36 shrink-0 border-r border-white/6 flex flex-col bg-[#070a0f] min-h-0">
+      {/* ══ COL 1: Question palette — wider, 3-per-row, big buttons ══ */}
+      <div className="w-48 shrink-0 border-r border-white/6 flex flex-col bg-[#070a0f] min-h-0">
         {/* Header */}
-        <div className="px-2 py-2 border-b border-white/6 shrink-0 flex items-center justify-between">
-          <p className="text-[10px] font-bold uppercase tracking-widest text-gray-500">{total} Qs</p>
+        <div className="px-3 py-2.5 border-b border-white/6 shrink-0 flex items-center justify-between">
+          <p className="text-xs font-bold uppercase tracking-widest text-gray-400">{total} Questions</p>
           <button onClick={addQuestion} title="Add question"
-            className="w-6 h-6 rounded flex items-center justify-center text-indigo-400 hover:text-white hover:bg-indigo-500/20 border border-indigo-500/25 transition">
-            <Plus size={11}/>
+            className="w-7 h-7 rounded-lg flex items-center justify-center text-indigo-400 hover:text-white hover:bg-indigo-500/20 border border-indigo-500/25 transition">
+            <Plus size={13}/>
           </button>
         </div>
         {/* Legend */}
-        <div className="flex items-center gap-2 px-2 py-1.5 border-b border-white/4">
-          <span className="flex items-center gap-1 text-[10px] text-gray-500"><span className="w-1.5 h-1.5 rounded-sm bg-emerald-500/60 inline-block"/>Done</span>
-          <span className="flex items-center gap-1 text-[10px] text-gray-500"><span className="w-1.5 h-1.5 rounded-sm bg-amber-500/60 inline-block"/>Part</span>
+        <div className="flex items-center gap-3 px-3 py-2 border-b border-white/4">
+          <span className="flex items-center gap-1.5 text-xs text-gray-400"><span className="w-2 h-2 rounded-sm bg-emerald-500/70 inline-block"/>Done</span>
+          <span className="flex items-center gap-1.5 text-xs text-gray-400"><span className="w-2 h-2 rounded-sm bg-amber-500/70 inline-block"/>Partial</span>
         </div>
-        {/* Scrollable number buttons — 4 per row */}
-        <div className="flex-1 overflow-y-auto px-1.5 py-1.5">
-          <div className="grid grid-cols-4 gap-1">
+        {/* Scrollable number buttons — 3 per row, large */}
+        <div className="flex-1 overflow-y-auto px-2 py-2">
+          <div className="grid grid-cols-3 gap-1.5">
             {questions.map((qItem, i) => {
               const isComplete = isQComplete(qItem)
               const isPartial  = qItem.question.trim() && !isComplete
@@ -432,14 +432,14 @@ function QuestionCard({ q, index, onChange, questions, activeIdx, setActiveIdx, 
                   key={i}
                   onClick={() => setActiveIdx(i)}
                   title={qItem.question ? qItem.question.split("\n")[0].slice(0,60) : `Q${i+1}`}
-                  className={`w-full aspect-square rounded flex items-center justify-center text-[11px] font-black border transition-all ${
+                  className={`w-full aspect-square rounded-lg flex items-center justify-center text-sm font-black border transition-all ${
                     isCurrent
-                      ? "bg-indigo-500 border-indigo-400 text-white shadow-md shadow-indigo-500/30 scale-110 z-10 relative"
+                      ? "bg-indigo-500 border-indigo-400 text-white shadow-md shadow-indigo-500/30 scale-105 z-10 relative"
                       : isComplete
                       ? "bg-emerald-500/20 border-emerald-500/30 text-emerald-300 hover:bg-emerald-500/30"
                       : isPartial
                       ? "bg-amber-500/20 border-amber-500/30 text-amber-300 hover:bg-amber-500/30"
-                      : "bg-white/5 border-white/10 text-gray-500 hover:bg-white/10 hover:text-gray-300"
+                      : "bg-white/5 border-white/10 text-gray-400 hover:bg-white/10 hover:text-gray-200"
                   }`}
                 >
                   {i+1}
@@ -450,17 +450,17 @@ function QuestionCard({ q, index, onChange, questions, activeIdx, setActiveIdx, 
         </div>
         {/* Footer: Delete current */}
         {total > 1 && (
-          <div className="border-t border-white/6 px-2 py-2 shrink-0">
+          <div className="border-t border-white/6 px-2.5 py-2 shrink-0">
             <button onClick={() => removeQuestion(activeIdx)}
-              className="w-full flex items-center justify-center gap-1 text-[10px] font-bold text-rose-400/70 hover:text-rose-400 hover:bg-rose-500/8 border border-rose-500/15 hover:border-rose-500/30 rounded py-1.5 transition">
-              <Trash2 size={10}/> Del Q{activeIdx+1}
+              className="w-full flex items-center justify-center gap-1.5 text-xs font-bold text-rose-400/70 hover:text-rose-400 hover:bg-rose-500/8 border border-rose-500/15 hover:border-rose-500/30 rounded-lg py-2 transition">
+              <Trash2 size={12}/> Del Q{activeIdx+1}
             </button>
           </div>
         )}
       </div>
 
       {/* ══ COL 2: Question editor (top) + Question list (bottom) ══ */}
-      <div className="flex flex-col border-r border-white/6 min-h-0 flex-1 min-w-0">
+      <div className="flex flex-col border-r border-white/6 min-h-0 min-w-0" style={{width:"32%"}}>
 
         {/* Panel header: Q number + status + type tabs — bigger, readable */}
         <div className="flex items-center justify-between px-3 py-2 border-b border-white/6 bg-[#0a0d13] shrink-0 gap-2">
@@ -486,8 +486,8 @@ function QuestionCard({ q, index, onChange, questions, activeIdx, setActiveIdx, 
           </div>
         </div>
 
-        {/* Question textarea — 46% height, more breathing room */}
-        <div className="p-2.5 shrink-0" style={{height:"46%"}}>
+        {/* Question textarea — 40% height, readable */}
+        <div className="p-2.5 shrink-0" style={{height:"40%"}}>
           {qType==="match" ? (
             <div className="h-full overflow-y-auto">
               <MatchBuilder value={q.question} onChange={v=>onChange(index,"question",v)}/>
@@ -509,17 +509,17 @@ function QuestionCard({ q, index, onChange, questions, activeIdx, setActiveIdx, 
         </div>
 
         {/* Question list header */}
-        <div className="flex items-center justify-between px-3 py-1.5 border-t border-b border-white/6 bg-[#0a0d13] shrink-0">
-          <p className="text-xs font-bold uppercase tracking-widest text-gray-500">All Questions · {total}</p>
+        <div className="flex items-center justify-between px-3 py-2 border-t border-b border-white/6 bg-[#0a0d13] shrink-0">
+          <p className="text-sm font-bold text-gray-300">All Questions · {total}</p>
           <button onClick={addQuestion}
-            className="flex items-center gap-1 text-xs font-bold text-indigo-400/80 hover:text-indigo-300 hover:bg-indigo-500/10 px-2 py-0.5 rounded transition">
-            <Plus size={10}/> Add
+            className="flex items-center gap-1 text-xs font-bold text-indigo-400 hover:text-indigo-300 hover:bg-indigo-500/10 px-2.5 py-1 rounded-lg transition border border-indigo-500/20 hover:border-indigo-500/40">
+            <Plus size={11}/> Add
           </button>
         </div>
 
-        {/* Question list — compact single-line rows */}
+        {/* Question list — larger, readable rows */}
         <div className="flex-1 overflow-y-auto min-h-0">
-          <div className="py-0.5">
+          <div className="py-1">
             {questions.map((qItem, i) => {
               const isComplete = isQComplete(qItem)
               const isPartial  = qItem.question.trim() && !isComplete
@@ -529,27 +529,29 @@ function QuestionCard({ q, index, onChange, questions, activeIdx, setActiveIdx, 
                 <button
                   key={i}
                   onClick={() => setActiveIdx(i)}
-                  className={`w-full flex items-center gap-2 px-3 py-1.5 text-left transition-all ${
+                  className={`w-full flex items-center gap-2.5 px-3 py-2.5 text-left transition-all ${
                     isCurrent
                       ? "bg-indigo-500/10 border-l-2 border-l-indigo-500"
                       : "hover:bg-white/3 border-l-2 border-l-transparent"
                   }`}
                 >
-                  <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${
+                  <span className={`w-2 h-2 rounded-full shrink-0 ${
                     isCurrent   ? "bg-indigo-400"
                     :isComplete ? "bg-emerald-400"
                     :isPartial  ? "bg-amber-400"
                     :"bg-gray-700"
                   }`}/>
-                  <span className={`text-[10px] font-black shrink-0 w-5 tabular-nums ${
-                    isCurrent?"text-indigo-300":isComplete?"text-emerald-400":isPartial?"text-amber-400":"text-gray-600"
+                  <span className={`text-xs font-black shrink-0 w-6 tabular-nums ${
+                    isCurrent?"text-indigo-300":isComplete?"text-emerald-400":isPartial?"text-amber-400":"text-gray-500"
                   }`}>{i+1}</span>
-                  <span className={`text-xs flex-1 truncate ${
-                    isCurrent?"text-white font-medium":isComplete?"text-gray-300":"text-gray-500"
+                  <span className={`text-sm flex-1 truncate leading-snug ${
+                    isCurrent?"text-white font-medium":isComplete?"text-gray-200":"text-gray-400"
                   }`}>
-                    {firstLine || <em className="opacity-40">Empty question</em>}
+                    {firstLine || <em className="opacity-40 text-xs">Empty question</em>}
                   </span>
-                  {isComplete && <span className="text-[10px] font-black text-emerald-400/60 shrink-0">{LABELS[qItem.correct]}</span>}
+                  {isComplete && <span className={`text-xs font-black shrink-0 w-5 h-5 rounded flex items-center justify-center ${
+                    isCurrent ? "bg-indigo-500/30 text-indigo-300" : "bg-emerald-500/20 text-emerald-400"
+                  }`}>{LABELS[qItem.correct]}</span>}
                 </button>
               )
             })}
@@ -557,8 +559,8 @@ function QuestionCard({ q, index, onChange, questions, activeIdx, setActiveIdx, 
         </div>
       </div>
 
-      {/* ══ COL 3: 4 options as 2×2 grid — flexible width, no overflow ══ */}
-      <div className="flex flex-col min-h-0 overflow-hidden shrink-0" style={{width:"45%", minWidth:0}}>
+      {/* ══ COL 3: 4 options as 2×2 grid — fills remaining space ══ */}
+      <div className="flex flex-col min-h-0 overflow-hidden flex-1 min-w-0">
         {/* Panel header — clear instruction */}
         <div className="flex items-center justify-between px-3 py-2 border-b border-white/6 bg-[#0a0d13] shrink-0">
           <div className="flex items-center gap-2">
