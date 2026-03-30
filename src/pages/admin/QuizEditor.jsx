@@ -250,128 +250,13 @@ function QuestionRow({ q, index, isActive, onClick, onDelete }) {
   )
 }
 
-// ─── Option Card — 2×2 grid, click header to mark correct ────────────────────
-function OptionCard({ option, index, isCorrect, onMarkCorrect, onTextChange, onExplChange }) {
-  const color = OPTION_COLORS[index]
-
-  const activeRing = {
-    cyan:   "border-cyan-500/40 bg-cyan-500/5",
-    violet: "border-violet-500/40 bg-violet-500/5",
-    amber:  "border-amber-500/40 bg-amber-500/5",
-    rose:   "border-rose-500/40 bg-rose-500/5",
-  }[color]
-
-  const labelActive = {
-    cyan:   "bg-cyan-500 text-gray-900 border-cyan-500",
-    violet: "bg-violet-500 text-white border-violet-500",
-    amber:  "bg-amber-500 text-gray-900 border-amber-500",
-    rose:   "bg-rose-500 text-white border-rose-500",
-  }[color]
-
-  const correctRing = isCorrect
-    ? "border-emerald-500/50 bg-emerald-500/5 shadow-sm shadow-emerald-500/10"
-    : activeRing
-
-  return (
-    <div className={`rounded-xl border transition-all duration-150 overflow-hidden ${correctRing}`}>
-      {/* Card header — click to mark correct */}
-      <button
-        onClick={onMarkCorrect}
-        className={`w-full flex items-center gap-2.5 px-3.5 py-2.5 transition-colors ${
-          isCorrect ? "bg-emerald-500/8 hover:bg-emerald-500/12" : "hover:bg-gray-800/30"
-        }`}
-        title={isCorrect ? "Correct answer" : "Click to mark as correct"}
-      >
-        <span className={`w-6 h-6 rounded-md border flex items-center justify-center text-[11px] font-black shrink-0 transition-all ${
-          isCorrect
-            ? "bg-emerald-500 border-emerald-500 text-gray-900"
-            : `bg-transparent border-gray-600 text-gray-500 group-hover:${labelActive}`
-        }`}>
-          {OPTION_LABELS[index]}
-        </span>
-        <span className={`text-[10px] font-bold flex-1 text-left transition-colors ${isCorrect ? "text-emerald-400" : "text-gray-500"}`}>
-          Option {OPTION_LABELS[index]}
-        </span>
-        {isCorrect ? (
-          <span className="flex items-center gap-1 text-[10px] font-bold text-emerald-400 bg-emerald-500/15 border border-emerald-500/25 px-2 py-0.5 rounded-full">
-            <CheckCircle size={9} /> Correct
-          </span>
-        ) : (
-          <span className="text-[10px] text-gray-700 opacity-0 group-hover:opacity-100 transition-opacity">
-            Mark correct
-          </span>
-        )}
-      </button>
-
-      {/* Inputs */}
-      <div className="px-3.5 pb-3 space-y-2">
-        <input
-          value={option.text}
-          onChange={e => onTextChange(e.target.value)}
-          placeholder={`Answer text for option ${OPTION_LABELS[index]}…`}
-          className="w-full bg-gray-900/50 text-white rounded-lg px-3 py-2 border border-gray-700/40 focus:border-cyan-500/50 focus:bg-gray-900/80 focus:outline-none text-sm placeholder-gray-600 transition"
-        />
-        <div className="flex items-start gap-2">
-          <span className="text-[10px] text-gray-600 font-bold mt-2.5 shrink-0 select-none">WHY</span>
-          <input
-            value={option.explanation}
-            onChange={e => onExplChange(e.target.value)}
-            placeholder="Explanation shown after answer is revealed…"
-            className="flex-1 bg-gray-900/30 text-gray-400 rounded-lg px-3 py-2 border border-gray-700/25 focus:border-cyan-500/40 focus:bg-gray-900/60 focus:outline-none text-xs placeholder-gray-600 transition"
-          />
-        </div>
-      </div>
-    </div>
-  )
-}
-
-// ─── Question Editor (right panel) ───────────────────────────────────────────
-function QuestionEditor({ q, qi, onChange, onOptionChange }) {
-  return (
-    <div className="space-y-5">
-
-      {/* Question text */}
-      <div>
-        <label className="block text-[10px] font-bold uppercase tracking-widest text-gray-500 mb-2">
-          Question
-        </label>
-        <textarea
-          value={q.question}
-          onChange={e => onChange(qi, "question", e.target.value)}
-          rows={3}
-          placeholder="Type your question here…"
-          className="w-full bg-gray-800/50 text-white rounded-xl px-4 py-3 border border-gray-700/60 focus:border-cyan-500/50 focus:bg-gray-800/80 focus:outline-none text-sm leading-relaxed resize-none placeholder-gray-600 transition"
-        />
-      </div>
-
-      {/* Options — 2×2 grid, click header to mark correct */}
-      <div>
-        <div className="flex items-center justify-between mb-2.5">
-          <label className="text-[10px] font-bold uppercase tracking-widest text-gray-500">
-            Options & Explanations
-          </label>
-          <span className="text-[10px] text-gray-600 bg-gray-800/60 border border-gray-700/30 px-2 py-0.5 rounded-full">
-            Click option header to mark correct
-          </span>
-        </div>
-
-        <div className="grid grid-cols-2 gap-3">
-          {q.options.map((o, j) => (
-            <OptionCard
-              key={j}
-              option={o}
-              index={j}
-              isCorrect={j === q.correct}
-              onMarkCorrect={() => onChange(qi, "correct", j)}
-              onTextChange={v => onOptionChange(qi, j, "text", v)}
-              onExplChange={v => onOptionChange(qi, j, "explanation", v)}
-            />
-          ))}
-        </div>
-      </div>
-    </div>
-  )
-}
+// Option accent colours — matches QuizCreate OPT
+const OPT_COLORS = [
+  { tag: "bg-sky-500",    hdr: "bg-sky-500/8"    },
+  { tag: "bg-violet-500", hdr: "bg-violet-500/8" },
+  { tag: "bg-amber-500",  hdr: "bg-amber-500/8"  },
+  { tag: "bg-rose-500",   hdr: "bg-rose-500/8"   },
+]
 
 // ─── Main ─────────────────────────────────────────────────────────────────────
 export default function QuizEditor() {
@@ -558,166 +443,263 @@ export default function QuizEditor() {
           </div>
         </header>
 
-        {/* ══ BODY ══ */}
+        {/* ══ BODY: 3-col layout matching QuizCreate ══ */}
         <div className="flex flex-1 overflow-hidden">
 
-          {/* ═ LEFT 40%: Details + Question list ═ */}
-          <aside className="w-[40%] shrink-0 border-r border-gray-800/70 flex flex-col overflow-hidden bg-gray-950">
+          {/* ══ COL 1: Quiz details accordion + Question palette ══ */}
+          <div className="w-48 shrink-0 border-r border-gray-800/70 flex flex-col overflow-hidden bg-gray-950">
 
+            {/* Quiz details accordion */}
             {meta && (
               <QuizDetailsAccordion meta={meta} onChange={handleMetaChange} questionCount={questions.length} />
             )}
 
-            {/* Question number grid — fast jump for 100+ questions */}
-            <div className="px-3 pt-2 pb-1 border-b border-gray-800/40">
-              <div className="flex flex-wrap gap-1">
+            {/* Palette header */}
+            <div className="px-3 py-2.5 border-b border-gray-800/60 shrink-0 flex items-center justify-between">
+              <p className="text-xs font-bold uppercase tracking-widest text-gray-400">{questions.length} Questions</p>
+              <button onClick={addQuestion} title="Add question"
+                className="w-7 h-7 rounded-lg flex items-center justify-center text-cyan-400 hover:text-white hover:bg-cyan-500/20 border border-cyan-500/25 transition">
+                <Plus size={13}/>
+              </button>
+            </div>
+
+            {/* Legend */}
+            <div className="flex items-center gap-3 px-3 py-2 border-b border-gray-800/40 shrink-0">
+              <span className="flex items-center gap-1.5 text-xs text-gray-400"><span className="w-2 h-2 rounded-sm bg-emerald-500/70 inline-block"/>Done</span>
+              <span className="flex items-center gap-1.5 text-xs text-gray-400"><span className="w-2 h-2 rounded-sm bg-amber-500/70 inline-block"/>Partial</span>
+            </div>
+
+            {/* Number grid — 3 per row */}
+            <div className="flex-1 overflow-y-auto px-2 py-2">
+              <div className="grid grid-cols-3 gap-1.5">
                 {questions.map((q, i) => {
                   const st  = qStatus(q)
                   const cur = i === activeQ
                   return (
                     <button key={i}
-                      onClick={() => { setActiveQ(i); rightRef.current?.scrollTo({ top: 0, behavior: "smooth" }) }}
+                      onClick={() => setActiveQ(i)}
                       title={q.question ? q.question.slice(0, 60) : `Q${i+1}`}
-                      className={`w-7 h-7 rounded-md text-[10px] font-black border transition-all ${
+                      className={`w-full aspect-square rounded-lg flex items-center justify-center text-sm font-black border transition-all ${
                         cur
-                          ? "bg-cyan-500 border-cyan-400 text-gray-900 shadow-sm shadow-cyan-500/30 scale-110"
+                          ? "bg-cyan-500 border-cyan-400 text-gray-900 shadow-md shadow-cyan-500/30 scale-105 z-10 relative"
                           : st === "complete"
-                          ? "bg-emerald-500/15 border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/30"
+                          ? "bg-emerald-500/20 border-emerald-500/30 text-emerald-300 hover:bg-emerald-500/30"
                           : st === "incomplete"
-                          ? "bg-amber-500/15 border-amber-500/30 text-amber-400 hover:bg-amber-500/25"
-                          : "bg-gray-800/60 border-gray-700/40 text-gray-500 hover:bg-gray-700/60"
+                          ? "bg-amber-500/20 border-amber-500/30 text-amber-300 hover:bg-amber-500/30"
+                          : "bg-white/5 border-white/10 text-gray-400 hover:bg-white/10 hover:text-gray-200"
                       }`}>
                       {i + 1}
                     </button>
                   )
                 })}
-                {/* Add button inline in grid */}
-                <button onClick={addQuestion}
-                  className="w-7 h-7 rounded-md text-[10px] font-black border border-dashed border-cyan-500/30 text-cyan-500/60 hover:border-cyan-500/60 hover:text-cyan-400 hover:bg-cyan-500/8 transition"
-                  title="Add question">
-                  +
-                </button>
-              </div>
-              {/* Legend */}
-              <div className="flex items-center gap-3 mt-1.5 pb-1">
-                <span className="flex items-center gap-1 text-[9px] text-gray-600"><span className="w-2 h-2 rounded-sm bg-emerald-500/50 inline-block"/>Done</span>
-                <span className="flex items-center gap-1 text-[9px] text-gray-600"><span className="w-2 h-2 rounded-sm bg-amber-500/50 inline-block"/>Partial</span>
-                <span className="flex items-center gap-1 text-[9px] text-gray-600"><span className="w-2 h-2 rounded-sm bg-gray-700 inline-block"/>Empty</span>
               </div>
             </div>
 
-            {/* Questions header */}
-            <div className="flex items-center justify-between px-4 py-2.5 border-b border-gray-800/60 shrink-0">
-              <div className="flex items-center gap-2">
-                <Hash size={11} className="text-gray-500" />
-                <span className="text-[10px] font-bold uppercase tracking-widest text-gray-500">Questions</span>
-                <span className="text-[10px] font-black text-white bg-gray-800 border border-gray-700/50 px-1.5 py-0.5 rounded-md tabular-nums leading-none">
-                  {questions.length}
-                </span>
-              </div>
-              <button onClick={addQuestion}
-                className="flex items-center gap-1 text-[11px] font-bold text-cyan-400 hover:text-cyan-300 bg-cyan-500/8 hover:bg-cyan-500/15 border border-cyan-500/20 px-2.5 py-1.5 rounded-lg transition">
-                <Plus size={11} /> Add
-              </button>
-            </div>
-
-            {/* Question list — single-line compact rows */}
-            <div className="flex-1 overflow-y-auto px-2 py-2">
-              {questions.length === 0 ? (
-                <div className="flex flex-col items-center justify-center h-28 text-center px-4">
-                  <p className="text-gray-600 text-xs">No questions yet.</p>
-                  <button onClick={addQuestion} className="mt-2 text-cyan-400 text-xs hover:underline">Add first question</button>
-                </div>
-              ) : questions.map((q, i) => (
-                <QuestionRow
-                  key={i} q={q} index={i} isActive={i === activeQ}
-                  onClick={() => { setActiveQ(i); rightRef.current?.scrollTo({ top: 0, behavior: "smooth" }) }}
-                  onDelete={removeQuestion}
-                />
-              ))}
-            </div>
-
-            {/* Footer — keyboard hint + min/max */}
-            <div className="border-t border-gray-800/60 px-4 py-2.5 shrink-0 flex items-center justify-between">
-              <p className="text-[9px] text-gray-700">Min 3 · Max 100 questions</p>
-              <p className="text-[9px] text-gray-700 hidden sm:block">← → keys to navigate</p>
-            </div>
-          </aside>
-
-          {/* ═ RIGHT 60%: Question Editor ═ */}
-          <main className="w-[60%] flex flex-col overflow-hidden">
-            {currentQ ? (
-              <>
-                {/* Sub-header: minimal, functional */}
-                <div className="flex items-center justify-between px-5 py-2.5 border-b border-gray-800/60 shrink-0 bg-gray-950/80">
-                  <div className="flex items-center gap-3">
-                    {/* Prev button */}
-                    <button
-                      onClick={() => { setActiveQ(q => Math.max(0, q - 1)); rightRef.current?.scrollTo({ top: 0, behavior: "smooth" }) }}
-                      disabled={activeQ === 0}
-                      className="w-7 h-7 flex items-center justify-center rounded-lg bg-gray-800/80 border border-gray-700/50 text-gray-400 hover:text-white hover:bg-gray-700 disabled:opacity-25 transition"
-                    >
-                      <ChevronLeft size={14} />
-                    </button>
-
-                    {/* Q number */}
-                    <div className="flex items-center gap-2">
-                      <span className="w-8 h-8 rounded-xl bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center text-sm font-black text-cyan-400 tabular-nums">
-                        {activeQ + 1}
-                      </span>
-                      <span className="text-[11px] text-gray-600 tabular-nums">/ {questions.length}</span>
-                    </div>
-
-                    {/* Next button */}
-                    <button
-                      onClick={() => { setActiveQ(q => Math.min(questions.length - 1, q + 1)); rightRef.current?.scrollTo({ top: 0, behavior: "smooth" }) }}
-                      disabled={activeQ === questions.length - 1}
-                      className="w-7 h-7 flex items-center justify-center rounded-lg bg-gray-800/80 border border-gray-700/50 text-gray-400 hover:text-white hover:bg-gray-700 disabled:opacity-25 transition"
-                    >
-                      <ChevronRight size={14} />
-                    </button>
-
-                    {/* Status badge */}
-                    {st && (
-                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${stBadge[st]}`}>
-                        {st.charAt(0).toUpperCase() + st.slice(1)}
-                      </span>
-                    )}
-                  </div>
-
-                  {/* Remove */}
-                  <button
-                    onClick={() => removeQuestion(activeQ)}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gray-800/60 border border-gray-700/40 text-gray-500 hover:text-red-400 hover:bg-red-500/8 hover:border-red-500/20 text-xs font-medium transition"
-                  >
-                    <Trash2 size={11} /> Remove
-                  </button>
-                </div>
-
-                {/* Editor scroll area — reduced horizontal padding, no extra centering margin */}
-                <div ref={rightRef} className="flex-1 overflow-y-auto px-6 py-5">
-                  <QuestionEditor
-                    q={currentQ}
-                    qi={activeQ}
-                    onChange={updateQuestion}
-                    onOptionChange={updateOption}
-                  />
-                </div>
-              </>
-            ) : (
-              <div className="flex-1 flex flex-col items-center justify-center text-center p-10">
-                <div className="w-14 h-14 rounded-2xl bg-gray-800/50 border border-gray-700/40 flex items-center justify-center mb-4">
-                  <Plus size={20} className="text-gray-600" />
-                </div>
-                <p className="text-gray-300 font-semibold mb-1">No questions yet</p>
-                <p className="text-gray-600 text-sm mb-5">Add a question using the left panel.</p>
-                <button onClick={addQuestion}
-                  className="flex items-center gap-2 bg-cyan-500 hover:bg-cyan-400 text-gray-900 font-bold px-5 py-2.5 rounded-xl transition text-sm">
-                  <Plus size={14} /> Add First Question
+            {/* Delete current question */}
+            {questions.length > 1 && (
+              <div className="border-t border-gray-800/60 px-2.5 py-2 shrink-0">
+                <button onClick={() => removeQuestion(activeQ)}
+                  className="w-full flex items-center justify-center gap-1.5 text-xs font-bold text-rose-400/70 hover:text-rose-400 hover:bg-rose-500/8 border border-rose-500/15 hover:border-rose-500/30 rounded-lg py-2 transition">
+                  <Trash2 size={12}/> Del Q{activeQ + 1}
                 </button>
               </div>
             )}
-          </main>
+
+            {/* Footer hint */}
+            <div className="border-t border-gray-800/60 px-3 py-2 shrink-0">
+              <p className="text-[9px] text-gray-700">Min 3 · Max 100 · ← → navigate</p>
+            </div>
+          </div>
+
+          {/* ══ COL 2: Question text editor + question list ══ */}
+          {currentQ ? (
+            <div className="flex flex-col border-r border-gray-800/70 min-h-0 min-w-0" style={{ width: "32%" }}>
+
+              {/* Col2 header: Q number + status badge */}
+              <div className="flex items-center justify-between px-3 py-2 border-b border-gray-800/60 bg-gray-950/80 shrink-0 gap-2">
+                <div className="flex items-center gap-2 shrink-0">
+                  <div className={`w-6 h-6 rounded-md flex items-center justify-center text-xs font-black border transition-all ${
+                    st === "complete"
+                      ? "bg-emerald-500 border-emerald-400 text-white shadow-sm shadow-emerald-500/30"
+                      : "bg-cyan-500/15 border-cyan-500/30 text-cyan-400"
+                  }`}>
+                    {st === "complete" ? <CheckCircle size={11}/> : activeQ + 1}
+                  </div>
+                  <span className="text-sm font-bold text-white">Question</span>
+                  {st && st !== "complete" && (
+                    <span className="text-[10px] text-amber-400/80 bg-amber-500/8 border border-amber-500/20 px-1.5 py-0.5 rounded-full">incomplete</span>
+                  )}
+                  {st === "complete" && (
+                    <span className="text-[10px] text-emerald-400/80 bg-emerald-500/8 border border-emerald-500/20 px-1.5 py-0.5 rounded-full">ready ✓</span>
+                  )}
+                </div>
+                <div className="flex items-center gap-1.5 shrink-0">
+                  <button
+                    onClick={() => setActiveQ(q => Math.max(0, q - 1))}
+                    disabled={activeQ === 0}
+                    className="w-6 h-6 flex items-center justify-center rounded-md bg-gray-800/80 border border-gray-700/50 text-gray-400 hover:text-white hover:bg-gray-700 disabled:opacity-25 transition"
+                  ><ChevronLeft size={12}/></button>
+                  <span className="text-xs text-gray-600 tabular-nums">{activeQ+1}/{questions.length}</span>
+                  <button
+                    onClick={() => setActiveQ(q => Math.min(questions.length - 1, q + 1))}
+                    disabled={activeQ === questions.length - 1}
+                    className="w-6 h-6 flex items-center justify-center rounded-md bg-gray-800/80 border border-gray-700/50 text-gray-400 hover:text-white hover:bg-gray-700 disabled:opacity-25 transition"
+                  ><ChevronRight size={12}/></button>
+                </div>
+              </div>
+
+              {/* Question textarea — 40% height */}
+              <div className="p-2.5 shrink-0" style={{ height: "40%" }}>
+                <textarea
+                  value={currentQ.question}
+                  onChange={e => updateQuestion(activeQ, "question", e.target.value)}
+                  placeholder="Type your question here…"
+                  className="w-full h-full bg-[#0d1117] text-white text-sm rounded-lg px-3.5 py-3 border border-white/8 focus:border-cyan-500/50 focus:outline-none focus:ring-2 focus:ring-cyan-500/10 placeholder-gray-600 transition-all resize-none leading-relaxed"
+                />
+              </div>
+
+              {/* Question list header */}
+              <div className="border-t border-gray-800/60 bg-gray-950/80 shrink-0">
+                <div className="flex items-center justify-between px-3 py-2 border-b border-gray-800/40">
+                  <p className="text-sm font-bold text-gray-300">All Questions · {questions.length}</p>
+                  <button onClick={addQuestion}
+                    className="flex items-center gap-1 text-xs font-bold text-cyan-400 hover:text-cyan-300 hover:bg-cyan-500/10 px-2.5 py-1 rounded-lg transition border border-cyan-500/20 hover:border-cyan-500/40">
+                    <Plus size={11}/> Add
+                  </button>
+                </div>
+              </div>
+
+              {/* Question list — scrollable */}
+              <div ref={rightRef} className="flex-1 overflow-y-auto min-h-0">
+                {questions.map((qItem, i) => {
+                  const isCurrent  = i === activeQ
+                  const isComplete = qStatus(qItem) === "complete"
+                  const isPartial  = qItem.question.trim() && !isComplete
+                  const firstLine  = qItem.question.split("\n").find(l => l.trim()) || ""
+                  return (
+                    <button
+                      key={i}
+                      onClick={() => setActiveQ(i)}
+                      className={`w-full flex items-start gap-2.5 px-3 py-2.5 text-left transition-all ${
+                        isCurrent
+                          ? "bg-cyan-500/10 border-l-2 border-l-cyan-500"
+                          : "hover:bg-white/3 border-l-2 border-l-transparent"
+                      }`}
+                    >
+                      <span className={`w-2 h-2 rounded-full shrink-0 mt-1.5 ${
+                        isCurrent ? "bg-cyan-400" : isComplete ? "bg-emerald-400" : isPartial ? "bg-amber-400" : "bg-gray-700"
+                      }`}/>
+                      <span className={`text-xs font-black shrink-0 w-6 tabular-nums mt-0.5 ${
+                        isCurrent ? "text-cyan-300" : isComplete ? "text-emerald-400" : isPartial ? "text-amber-400" : "text-gray-500"
+                      }`}>{i+1}</span>
+                      <span className="flex-1 min-w-0">
+                        <span className={`text-sm block truncate leading-snug ${
+                          isCurrent ? "text-white font-medium" : isComplete ? "text-gray-200" : "text-gray-400"
+                        }`}>
+                          {firstLine || <em className="opacity-40 text-xs">Empty question</em>}
+                        </span>
+                      </span>
+                      {isComplete && (
+                        <span className={`text-xs font-black shrink-0 w-5 h-5 rounded flex items-center justify-center mt-0.5 ${
+                          isCurrent ? "bg-cyan-500/30 text-cyan-300" : "bg-emerald-500/20 text-emerald-400"
+                        }`}>{OPTION_LABELS[qItem.correct]}</span>
+                      )}
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+          ) : (
+            /* No questions state */
+            <div className="flex flex-col items-center justify-center flex-1 text-center p-10">
+              <div className="w-14 h-14 rounded-2xl bg-gray-800/50 border border-gray-700/40 flex items-center justify-center mb-4">
+                <Plus size={20} className="text-gray-600" />
+              </div>
+              <p className="text-gray-300 font-semibold mb-1">No questions yet</p>
+              <p className="text-gray-600 text-sm mb-5">Add a question to get started.</p>
+              <button onClick={addQuestion}
+                className="flex items-center gap-2 bg-cyan-500 hover:bg-cyan-400 text-gray-900 font-bold px-5 py-2.5 rounded-xl transition text-sm">
+                <Plus size={14}/> Add First Question
+              </button>
+            </div>
+          )}
+
+          {/* ══ COL 3: Options 2×2 grid ══ */}
+          {currentQ && (
+            <div className="flex flex-col min-h-0 overflow-hidden flex-1 min-w-0">
+              {/* Col3 header */}
+              <div className="flex items-center justify-between px-3 py-2 border-b border-gray-800/60 bg-gray-950/80 shrink-0">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-bold text-white">Options</span>
+                  <span className="text-xs text-gray-400">answer + explanation</span>
+                </div>
+                <span className="flex items-center gap-1 text-[10px] font-semibold text-cyan-400/80 bg-cyan-500/8 border border-cyan-500/20 px-2 py-0.5 rounded-full">
+                  <span className="font-black">A B C D</span> to mark correct
+                </span>
+              </div>
+
+              {/* 2×2 grid — fills full height */}
+              <div className="flex-1 grid grid-cols-2 grid-rows-2 min-h-0 overflow-hidden">
+                {currentQ.options.map((o, j) => {
+                  const isCorrect = j === currentQ.correct
+                  const c = OPT_COLORS[j]
+                  const borderR = j === 0 || j === 2 ? "border-r border-gray-800/60" : ""
+                  const borderB = j < 2 ? "border-b border-gray-800/60" : ""
+                  return (
+                    <div key={j} className={`flex flex-col min-h-0 overflow-hidden transition-colors ${borderR} ${borderB} ${isCorrect ? "bg-emerald-500/4" : ""}`}>
+                      {/* Option header — click to mark correct */}
+                      <button
+                        type="button"
+                        onClick={() => updateQuestion(activeQ, "correct", j)}
+                        title={isCorrect ? "Correct answer" : "Click to mark as correct answer"}
+                        className={`flex items-center gap-2 px-3 py-2 shrink-0 w-full text-left transition-colors ${
+                          isCorrect ? "bg-emerald-500/12 hover:bg-emerald-500/18" : `${c.hdr} hover:bg-white/5`
+                        }`}
+                      >
+                        <span className={`w-6 h-6 rounded-md flex items-center justify-center text-xs font-black shrink-0 transition-all ${
+                          isCorrect ? "bg-emerald-500 text-white shadow-md shadow-emerald-500/30" : `${c.tag} text-white`
+                        }`}>{OPTION_LABELS[j]}</span>
+                        <span className={`text-xs font-bold flex-1 ${isCorrect ? "text-emerald-300" : "text-gray-500"}`}>
+                          {isCorrect ? "✓ Correct answer" : <span className="text-gray-600">Mark as correct</span>}
+                        </span>
+                        {isCorrect
+                          ? <CheckCircle size={12} className="text-emerald-400 shrink-0"/>
+                          : <span className="text-[10px] text-gray-700 shrink-0">click</span>
+                        }
+                      </button>
+
+                      {/* Input fields */}
+                      <div className="flex-1 flex flex-col gap-1.5 px-2.5 pb-2.5 pt-2 min-h-0">
+                        <input
+                          value={o.text}
+                          onChange={e => updateOption(activeQ, j, "text", e.target.value)}
+                          placeholder="Answer text…"
+                          className={`w-full bg-[#0d1117] rounded-lg px-2.5 py-2 text-sm border focus:outline-none focus:ring-1 placeholder-gray-600 transition-all shrink-0 ${
+                            isCorrect
+                              ? "text-emerald-200 border-emerald-500/25 focus:border-emerald-400/50 focus:ring-emerald-500/10"
+                              : "text-gray-200 border-white/8 focus:border-white/20 focus:ring-white/5"
+                          }`}
+                        />
+                        <div className="flex-1 flex flex-col min-h-0">
+                          <p className="text-[10px] font-bold uppercase tracking-widest text-gray-500 mb-1 shrink-0">Explanation</p>
+                          <textarea
+                            value={o.explanation}
+                            onChange={e => updateOption(activeQ, j, "explanation", e.target.value)}
+                            placeholder="Why is this option correct/wrong?"
+                            className={`flex-1 w-full bg-[#0d1117] rounded-lg px-2.5 py-1.5 text-xs border focus:outline-none focus:ring-1 placeholder-gray-600 transition-all resize-none leading-relaxed min-h-0 ${
+                              isCorrect
+                                ? "text-emerald-300/80 border-emerald-500/20 focus:border-emerald-400/40 focus:ring-emerald-500/8"
+                                : "text-gray-400 border-white/6 focus:border-white/15 focus:ring-white/4"
+                            }`}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          )}
 
         </div>
       </div>
