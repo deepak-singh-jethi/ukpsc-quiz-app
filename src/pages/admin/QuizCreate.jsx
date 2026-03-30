@@ -79,7 +79,7 @@ function ConfirmModal({ open, title, message, confirmLabel="Confirm", confirmCls
 
 // ─── Shared field styles ────────────────────────────────────────────────────
 const F  = "w-full bg-[#0d1117] text-white text-sm rounded-lg px-3 py-2.5 border border-white/8 focus:border-indigo-500/50 focus:outline-none focus:ring-2 focus:ring-indigo-500/10 placeholder-gray-600 transition-all"
-const FL = "block text-[10px] font-bold uppercase tracking-widest text-gray-500 mb-1.5"
+const FL = "block text-xs font-bold uppercase tracking-widest text-gray-400 mb-1.5"
 
 // ─── Step bar ─────────────────────────────────────────────────────────────────
 function StepBar({ step, setStep, meta, questions }) {
@@ -107,8 +107,8 @@ function StepBar({ step, setStep, meta, questions }) {
               {s.done ? <Check size={11} className="text-white"/> : <s.icon size={11} className={step===s.id?"text-white":"text-gray-500"}/>}
             </div>
             <div className="hidden sm:block text-left">
-              <p className={`text-[11px] font-bold leading-none ${step===s.id?"text-white":"text-gray-500"}`}>{s.label}</p>
-              <p className={`text-[9px] mt-0.5 leading-none truncate max-w-[90px] ${s.done?"text-emerald-400":"text-gray-600"}`}>{s.sub}</p>
+              <p className={`text-xs font-bold leading-none ${step===s.id?"text-white":"text-gray-500"}`}>{s.label}</p>
+              <p className={`text-[10px] mt-0.5 leading-none truncate max-w-[110px] ${s.done?"text-emerald-400":"text-gray-600"}`}>{s.sub}</p>
             </div>
           </button>
           {idx < 2 && <div className={`w-4 h-px mx-0.5 ${steps[idx].done?"bg-emerald-500/40":"bg-white/8"}`}/>}
@@ -228,7 +228,7 @@ function StepDetails({ meta, onChange, onNext, hints }) {
             </div>
             {ok && (
               <div className="bg-indigo-500/6 border border-indigo-500/20 rounded-lg px-4 py-3">
-                <p className="text-[9px] font-bold uppercase tracking-widest text-indigo-400/60 mb-1.5">Preview</p>
+                <p className="text-[10px] font-bold uppercase tracking-widest text-indigo-400/60 mb-1.5">Preview</p>
                 <p className="text-sm font-bold text-white truncate mb-2">{meta.title}</p>
                 <div className="flex flex-wrap gap-1.5">
                   {meta.difficulty && <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${DIFF[meta.difficulty]?.cls}`}>{DIFF[meta.difficulty]?.label}</span>}
@@ -403,22 +403,22 @@ function QuestionCard({ q, index, onChange, questions, activeIdx, setActiveIdx, 
   ]
 
   return (
-    <div className="flex h-full min-h-0 overflow-hidden">
+    <div className="flex h-full min-h-0 overflow-hidden w-full">
 
       {/* ══ COL 1: Question palette (compact, 4-per-row) ══ */}
-      <div className="w-28 shrink-0 border-r border-white/6 flex flex-col bg-[#070a0f] min-h-0">
+      <div className="w-36 shrink-0 border-r border-white/6 flex flex-col bg-[#070a0f] min-h-0">
         {/* Header */}
         <div className="px-2 py-2 border-b border-white/6 shrink-0 flex items-center justify-between">
-          <p className="text-[8px] font-bold uppercase tracking-widest text-gray-600">{total} Qs</p>
+          <p className="text-[10px] font-bold uppercase tracking-widest text-gray-500">{total} Qs</p>
           <button onClick={addQuestion} title="Add question"
-            className="w-5 h-5 rounded flex items-center justify-center text-indigo-400 hover:text-white hover:bg-indigo-500/20 border border-indigo-500/25 transition">
-            <Plus size={9}/>
+            className="w-6 h-6 rounded flex items-center justify-center text-indigo-400 hover:text-white hover:bg-indigo-500/20 border border-indigo-500/25 transition">
+            <Plus size={11}/>
           </button>
         </div>
         {/* Legend */}
         <div className="flex items-center gap-2 px-2 py-1.5 border-b border-white/4">
-          <span className="flex items-center gap-1 text-[8px] text-gray-600"><span className="w-1.5 h-1.5 rounded-sm bg-emerald-500/60 inline-block"/>Done</span>
-          <span className="flex items-center gap-1 text-[8px] text-gray-600"><span className="w-1.5 h-1.5 rounded-sm bg-amber-500/60 inline-block"/>Part</span>
+          <span className="flex items-center gap-1 text-[10px] text-gray-500"><span className="w-1.5 h-1.5 rounded-sm bg-emerald-500/60 inline-block"/>Done</span>
+          <span className="flex items-center gap-1 text-[10px] text-gray-500"><span className="w-1.5 h-1.5 rounded-sm bg-amber-500/60 inline-block"/>Part</span>
         </div>
         {/* Scrollable number buttons — 4 per row */}
         <div className="flex-1 overflow-y-auto px-1.5 py-1.5">
@@ -432,7 +432,7 @@ function QuestionCard({ q, index, onChange, questions, activeIdx, setActiveIdx, 
                   key={i}
                   onClick={() => setActiveIdx(i)}
                   title={qItem.question ? qItem.question.split("\n")[0].slice(0,60) : `Q${i+1}`}
-                  className={`w-full aspect-square rounded flex items-center justify-center text-[9px] font-black border transition-all ${
+                  className={`w-full aspect-square rounded flex items-center justify-center text-[11px] font-black border transition-all ${
                     isCurrent
                       ? "bg-indigo-500 border-indigo-400 text-white shadow-md shadow-indigo-500/30 scale-110 z-10 relative"
                       : isComplete
@@ -452,33 +452,33 @@ function QuestionCard({ q, index, onChange, questions, activeIdx, setActiveIdx, 
         {total > 1 && (
           <div className="border-t border-white/6 px-2 py-2 shrink-0">
             <button onClick={() => removeQuestion(activeIdx)}
-              className="w-full flex items-center justify-center gap-1 text-[9px] font-bold text-rose-400/70 hover:text-rose-400 hover:bg-rose-500/8 border border-rose-500/15 hover:border-rose-500/30 rounded py-1.5 transition">
-              <Trash2 size={8}/> Del Q{activeIdx+1}
+              className="w-full flex items-center justify-center gap-1 text-[10px] font-bold text-rose-400/70 hover:text-rose-400 hover:bg-rose-500/8 border border-rose-500/15 hover:border-rose-500/30 rounded py-1.5 transition">
+              <Trash2 size={10}/> Del Q{activeIdx+1}
             </button>
           </div>
         )}
       </div>
 
       {/* ══ COL 2: Question editor (top) + Question list (bottom) ══ */}
-      <div className="flex flex-col border-r border-white/6 min-h-0 flex-1">
+      <div className="flex flex-col border-r border-white/6 min-h-0 flex-1 min-w-0">
 
         {/* Panel header: Q number + status + type tabs — bigger, readable */}
         <div className="flex items-center justify-between px-3 py-2 border-b border-white/6 bg-[#0a0d13] shrink-0 gap-2">
           <div className="flex items-center gap-2 shrink-0">
-            <div className={`w-5 h-5 rounded-md flex items-center justify-center text-[9px] font-black border transition-all ${
+            <div className={`w-6 h-6 rounded-md flex items-center justify-center text-xs font-black border transition-all ${
               complete ? "bg-emerald-500 border-emerald-400 text-white shadow-sm shadow-emerald-500/30" : "bg-indigo-500/15 border-indigo-500/30 text-indigo-400"
             }`}>
-              {complete ? <Check size={9}/> : index+1}
+              {complete ? <Check size={11}/> : index+1}
             </div>
-            <span className="text-[11px] font-bold text-white">Question</span>
-            {!complete && <span className="text-[9px] text-amber-400/80 bg-amber-500/8 border border-amber-500/20 px-1.5 py-0.5 rounded-full">incomplete</span>}
-            {complete && <span className="text-[9px] text-emerald-400/80 bg-emerald-500/8 border border-emerald-500/20 px-1.5 py-0.5 rounded-full">ready ✓</span>}
+            <span className="text-sm font-bold text-white">Question</span>
+            {!complete && <span className="text-[10px] text-amber-400/80 bg-amber-500/8 border border-amber-500/20 px-1.5 py-0.5 rounded-full">incomplete</span>}
+            {complete && <span className="text-[10px] text-emerald-400/80 bg-emerald-500/8 border border-emerald-500/20 px-1.5 py-0.5 rounded-full">ready ✓</span>}
           </div>
-          {/* Type selector — readable 10px text */}
+          {/* Type selector — readable 11px text */}
           <div className="flex gap-0.5 bg-white/4 rounded-lg p-0.5 border border-white/8">
             {TYPE_TABS.map(t=>(
               <button key={t.id} onClick={()=>handleTypeChange(t.id)}
-                className={`px-2.5 py-1 rounded-md text-[10px] font-bold transition-all ${
+                className={`px-3 py-1 rounded-md text-xs font-bold transition-all ${
                   qType===t.id ? "bg-indigo-500 text-white shadow-sm" : "text-gray-400 hover:text-gray-200 hover:bg-white/4"
                 }`}>{t.label}
               </button>
@@ -510,10 +510,10 @@ function QuestionCard({ q, index, onChange, questions, activeIdx, setActiveIdx, 
 
         {/* Question list header */}
         <div className="flex items-center justify-between px-3 py-1.5 border-t border-b border-white/6 bg-[#0a0d13] shrink-0">
-          <p className="text-[9px] font-bold uppercase tracking-widest text-gray-600">All Questions · {total}</p>
+          <p className="text-xs font-bold uppercase tracking-widest text-gray-500">All Questions · {total}</p>
           <button onClick={addQuestion}
-            className="flex items-center gap-1 text-[9px] font-bold text-indigo-400/80 hover:text-indigo-300 hover:bg-indigo-500/10 px-2 py-0.5 rounded transition">
-            <Plus size={8}/> Add
+            className="flex items-center gap-1 text-xs font-bold text-indigo-400/80 hover:text-indigo-300 hover:bg-indigo-500/10 px-2 py-0.5 rounded transition">
+            <Plus size={10}/> Add
           </button>
         </div>
 
@@ -541,15 +541,15 @@ function QuestionCard({ q, index, onChange, questions, activeIdx, setActiveIdx, 
                     :isPartial  ? "bg-amber-400"
                     :"bg-gray-700"
                   }`}/>
-                  <span className={`text-[9px] font-black shrink-0 w-5 tabular-nums ${
+                  <span className={`text-[10px] font-black shrink-0 w-5 tabular-nums ${
                     isCurrent?"text-indigo-300":isComplete?"text-emerald-400":isPartial?"text-amber-400":"text-gray-600"
                   }`}>{i+1}</span>
-                  <span className={`text-[11px] flex-1 truncate ${
+                  <span className={`text-xs flex-1 truncate ${
                     isCurrent?"text-white font-medium":isComplete?"text-gray-300":"text-gray-500"
                   }`}>
                     {firstLine || <em className="opacity-40">Empty question</em>}
                   </span>
-                  {isComplete && <span className="text-[9px] font-black text-emerald-400/60 shrink-0">{LABELS[qItem.correct]}</span>}
+                  {isComplete && <span className="text-[10px] font-black text-emerald-400/60 shrink-0">{LABELS[qItem.correct]}</span>}
                 </button>
               )
             })}
@@ -557,16 +557,16 @@ function QuestionCard({ q, index, onChange, questions, activeIdx, setActiveIdx, 
         </div>
       </div>
 
-      {/* ══ COL 3: 4 options as 2×2 grid — fixed 44% ══ */}
-      <div className="flex flex-col min-h-0 overflow-hidden shrink-0" style={{width:"44%"}}>
+      {/* ══ COL 3: 4 options as 2×2 grid — flexible width, no overflow ══ */}
+      <div className="flex flex-col min-h-0 overflow-hidden shrink-0" style={{width:"45%", minWidth:0}}>
         {/* Panel header — clear instruction */}
         <div className="flex items-center justify-between px-3 py-2 border-b border-white/6 bg-[#0a0d13] shrink-0">
           <div className="flex items-center gap-2">
-            <span className="text-[11px] font-bold text-white">Options</span>
-            <span className="text-[9px] text-gray-500">answer + explanation</span>
+            <span className="text-sm font-bold text-white">Options</span>
+            <span className="text-xs text-gray-400">answer + explanation</span>
           </div>
-          {/* Prominent hint — not tiny ghost text */}
-          <span className="flex items-center gap-1 text-[9px] font-semibold text-indigo-400/80 bg-indigo-500/8 border border-indigo-500/20 px-2 py-0.5 rounded-full">
+          {/* Prominent hint */}
+          <span className="flex items-center gap-1 text-[10px] font-semibold text-indigo-400/80 bg-indigo-500/8 border border-indigo-500/20 px-2 py-0.5 rounded-full">
             <span className="font-black">A B C D</span> to mark correct
           </span>
         </div>
@@ -587,19 +587,19 @@ function QuestionCard({ q, index, onChange, questions, activeIdx, setActiveIdx, 
                   type="button"
                   onClick={()=>onChange(index,"correct",j)}
                   title={isCorrect ? "Correct answer" : "Click to mark as correct answer"}
-                  className={`flex items-center gap-2 px-3 py-1.5 shrink-0 w-full text-left transition-colors ${
+                  className={`flex items-center gap-2 px-3 py-2 shrink-0 w-full text-left transition-colors ${
                     isCorrect ? "bg-emerald-500/12 hover:bg-emerald-500/18" : `${c.hdr} hover:bg-white/5`
                   }`}
                 >
-                  <span className={`w-6 h-6 rounded-md flex items-center justify-center text-[11px] font-black shrink-0 transition-all ${
+                  <span className={`w-6 h-6 rounded-md flex items-center justify-center text-xs font-black shrink-0 transition-all ${
                     isCorrect ? "bg-emerald-500 text-white shadow-md shadow-emerald-500/30" : `${c.tag} text-white`
                   }`}>{LABELS[j]}</span>
-                  <span className={`text-[10px] font-bold flex-1 ${isCorrect ? "text-emerald-300" : "text-gray-500"}`}>
+                  <span className={`text-xs font-bold flex-1 ${isCorrect ? "text-emerald-300" : "text-gray-500"}`}>
                     {isCorrect ? "✓ Correct answer" : <span className="text-gray-600 group-hover:text-gray-400">Mark as correct</span>}
                   </span>
                   {isCorrect
-                    ? <CheckCircle size={11} className="text-emerald-400 shrink-0"/>
-                    : <span className="text-[8px] text-gray-700 shrink-0">click</span>
+                    ? <CheckCircle size={12} className="text-emerald-400 shrink-0"/>
+                    : <span className="text-[10px] text-gray-700 shrink-0">click</span>
                   }
                 </button>
                 {/* Input fields */}
@@ -608,7 +608,7 @@ function QuestionCard({ q, index, onChange, questions, activeIdx, setActiveIdx, 
                     value={o.text}
                     onChange={e=>updateOption(j,"text",e.target.value)}
                     placeholder="Answer text…"
-                    className={`w-full bg-[#0d1117] rounded-lg px-2.5 py-2 text-[13px] border focus:outline-none focus:ring-1 placeholder-gray-600 transition-all shrink-0 ${
+                    className={`w-full bg-[#0d1117] rounded-lg px-2.5 py-2 text-sm border focus:outline-none focus:ring-1 placeholder-gray-600 transition-all shrink-0 ${
                       isCorrect
                         ? "text-emerald-200 border-emerald-500/25 focus:border-emerald-400/50 focus:ring-emerald-500/10"
                         : "text-gray-200 border-white/8 focus:border-white/20 focus:ring-white/5"
@@ -616,12 +616,12 @@ function QuestionCard({ q, index, onChange, questions, activeIdx, setActiveIdx, 
                   />
                   {/* Explanation label + textarea */}
                   <div className="flex-1 flex flex-col min-h-0">
-                    <p className="text-[8px] font-bold uppercase tracking-widest text-gray-600 mb-1 shrink-0">Explanation</p>
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-gray-500 mb-1 shrink-0">Explanation</p>
                     <textarea
                       value={o.explanation}
                       onChange={e=>updateOption(j,"explanation",e.target.value)}
                       placeholder="Why is this option correct/wrong?"
-                      className={`flex-1 w-full bg-[#0d1117] rounded-lg px-2.5 py-1.5 text-[11px] border focus:outline-none focus:ring-1 placeholder-gray-600 transition-all resize-none leading-relaxed min-h-0 ${
+                      className={`flex-1 w-full bg-[#0d1117] rounded-lg px-2.5 py-1.5 text-xs border focus:outline-none focus:ring-1 placeholder-gray-600 transition-all resize-none leading-relaxed min-h-0 ${
                         isCorrect
                           ? "text-emerald-300/80 border-emerald-500/20 focus:border-emerald-400/40 focus:ring-emerald-500/8"
                           : "text-gray-400 border-white/6 focus:border-white/15 focus:ring-white/4"
@@ -733,20 +733,20 @@ function StepQuestions({ questions, setQuestions, mode, setMode, onNext, onBack 
       {/* ── Toolbar ── */}
       <div className="px-4 py-2 border-b border-white/6 flex items-center justify-between shrink-0 bg-[#0a0d13]">
         <div className="flex items-center gap-2">
-          <span className="text-xs font-bold text-white">Questions</span>
-          <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border ${
+          <span className="text-sm font-bold text-white">Questions</span>
+          <span className={`text-xs font-semibold px-2 py-0.5 rounded-full border ${
             ready?"text-emerald-400 bg-emerald-500/10 border-emerald-500/25":"text-gray-500 bg-white/4 border-white/8"
           }`}>{done}/{total} ready</span>
           {total>0&&total<3 && (
-            <span className="text-[10px] text-amber-400 bg-amber-500/8 border border-amber-500/20 px-2 py-0.5 rounded-full">
+            <span className="text-xs text-amber-400 bg-amber-500/8 border border-amber-500/20 px-2 py-0.5 rounded-full">
               Need {3-total} more
             </span>
           )}
           {mode==="manual" && (
             <div className="flex items-center gap-1 ml-1">
               <button onClick={addQuestion}
-                className="flex items-center gap-1 text-[10px] font-bold bg-indigo-500/15 hover:bg-indigo-500/25 text-indigo-400 border border-indigo-500/30 px-2 py-1 rounded-lg transition">
-                <Plus size={10}/> Add Q
+                className="flex items-center gap-1 text-xs font-bold bg-indigo-500/15 hover:bg-indigo-500/25 text-indigo-400 border border-indigo-500/30 px-2 py-1 rounded-lg transition">
+                <Plus size={11}/> Add Q
               </button>
             </div>
           )}
@@ -762,10 +762,10 @@ function StepQuestions({ questions, setQuestions, mode, setMode, onNext, onBack 
                 if(id==="json") { setJsonStep("upload"); setQuestions([]) }
                 if(id==="manual") { setJsonStep("upload"); setJsonError(""); if(questions.length===0){setQuestions([mkBlankQ()]);setActiveIdx(0)} }
               }}
-                className={`flex items-center gap-1 px-2.5 py-1.5 rounded text-[11px] font-bold transition-all ${
+                className={`flex items-center gap-1 px-3 py-1.5 rounded text-xs font-bold transition-all ${
                   mode===id?"bg-indigo-500 text-white shadow-sm":"text-gray-500 hover:text-gray-300"
                 }`}>
-                <Icon size={11}/>{label}
+                <Icon size={12}/>{label}
               </button>
             ))}
           </div>
@@ -956,7 +956,7 @@ function ReviewItem({ q, index }) {
         }`}>
           {complete?<CheckCircle size={9} className="text-emerald-400"/>:<AlertTriangle size={9} className="text-amber-400"/>}
         </div>
-        <span className="text-[10px] font-bold text-gray-500 shrink-0">Q{index+1}</span>
+        <span className="text-xs font-bold text-gray-500 shrink-0">Q{index+1}</span>
         <span className="text-sm text-gray-300 flex-1 truncate">
           {(q.question||"Empty question").split("\n").find(l=>l.trim())||"Empty question"}
         </span>
@@ -989,7 +989,7 @@ function StepReview({ meta, questions, saving, onSave, onBack }) {
       <div className="flex-1 overflow-y-auto">
         <div className="max-w-3xl mx-auto px-8 py-8 space-y-5">
           <div className="bg-indigo-500/6 border border-indigo-500/20 rounded-2xl p-5">
-            <p className="text-[9px] font-bold uppercase tracking-widest text-indigo-400/60 mb-2">Quiz Summary</p>
+            <p className="text-xs font-bold uppercase tracking-widest text-indigo-400/60 mb-2">Quiz Summary</p>
             <h3 className="text-lg font-bold text-white mb-2">{meta.title}</h3>
             {meta.description && <p className="text-sm text-gray-400 mb-3 leading-relaxed">{meta.description}</p>}
             <div className="flex flex-wrap items-center gap-2">
@@ -1012,7 +1012,7 @@ function StepReview({ meta, questions, saving, onSave, onBack }) {
             {done<questions.length && <p className="text-xs text-amber-400">{questions.length-done} incomplete — cannot publish</p>}
           </div>
           <div>
-            <p className="text-[9px] font-bold uppercase tracking-widest text-gray-600 mb-2.5">Questions</p>
+            <p className="text-xs font-bold uppercase tracking-widest text-gray-500 mb-2.5">Questions</p>
             <div className="space-y-2">
               {questions.map((q,i)=><ReviewItem key={i} q={q} index={i}/>)}
             </div>
@@ -1146,10 +1146,10 @@ export default function QuizCreate() {
       <div className="flex flex-col h-screen overflow-hidden bg-[#080b10]">
 
         {/* Top bar — slim, fixed height */}
-        <div className="flex items-center gap-0 px-3 border-b border-white/6 shrink-0 bg-[#080b10]/95 backdrop-blur-sm" style={{height:44}}>
+        <div className="flex items-center gap-0 px-3 border-b border-white/6 shrink-0 bg-[#080b10]/95 backdrop-blur-sm" style={{height:52}}>
           <button onClick={()=>navigate("/admin/quizzes")}
-            className="flex items-center gap-1 text-gray-500 hover:text-white text-[11px] transition group px-2 py-1.5 rounded-lg hover:bg-white/4 shrink-0">
-            <ArrowLeft size={11} className="group-hover:-translate-x-0.5 transition-transform"/> Back
+            className="flex items-center gap-1 text-gray-500 hover:text-white text-xs transition group px-2 py-1.5 rounded-lg hover:bg-white/4 shrink-0">
+            <ArrowLeft size={12} className="group-hover:-translate-x-0.5 transition-transform"/> Back
           </button>
           <div className="h-3 w-px bg-white/8 mx-2 shrink-0"/>
           <StepBar step={step} setStep={setStep} meta={meta} questions={questions}/>
