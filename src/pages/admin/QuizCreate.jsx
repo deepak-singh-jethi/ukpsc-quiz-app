@@ -10,7 +10,7 @@ import {
   CheckCircle, XCircle, AlertTriangle, ArrowLeft,
   Clock, FileJson, Send, Save, ChevronRight, ChevronLeft, ArrowRight,
   Check, RotateCcw, BookOpen, Sparkles, Target, FileText, Eye,
-  Hash, Zap, Minus, Calendar, BarChart2
+  Hash, Zap, Minus, Calendar, BarChart2, Search, X
 } from "lucide-react"
 import toast from "react-hot-toast"
 
@@ -379,6 +379,7 @@ function JsonPreviewItem({ q, index }) {
 function QuestionCard({ q, index, onChange, questions, activeIdx, setActiveIdx, addQuestion, removeQuestion, total }) {
   const [qType, setQType] = useState(() => detectQType(q.question))
   const [typeModal, setTypeModal] = useState(null) // {targetType}
+  const [searchQ, setSearchQ] = useState("")
   function updateOption(optIdx, field, val) {
     onChange(index, "options", q.options.map((o,j) => j===optIdx ? {...o,[field]:val} : o))
   }
@@ -508,53 +509,136 @@ function QuestionCard({ q, index, onChange, questions, activeIdx, setActiveIdx, 
           )}
         </div>
 
-        {/* Question list header */}
-        <div className="flex items-center justify-between px-3 py-2 border-t border-b border-white/6 bg-[#0a0d13] shrink-0">
-          <p className="text-sm font-bold text-gray-300">All Questions · {total}</p>
-          <button onClick={addQuestion}
-            className="flex items-center gap-1 text-xs font-bold text-indigo-400 hover:text-indigo-300 hover:bg-indigo-500/10 px-2.5 py-1 rounded-lg transition border border-indigo-500/20 hover:border-indigo-500/40">
-            <Plus size={11}/> Add
-          </button>
+        {/* Question list header + search */}
+        <div className="border-t border-white/6 bg-[#0a0d13] shrink-0">
+          {/* Header row */}
+          <div className="flex items-center justify-between px-3 py-2 border-b border-white/4">
+            <p className="text-sm font-bold text-gray-300">All Questions · {total}</p>
+            <button onClick={addQuestion}
+              className="flex items-center gap-1 text-xs font-bold text-indigo-400 hover:text-indigo-300 hover:bg-indigo-500/10 px-2.5 py-1 rounded-lg transition border border-indigo-500/20 hover:border-indigo-500/40">
+              <Plus size={11}/> Add
+            </button>
+          </div>
+          {/* Search bar */}
+          <div className="px-2.5 py-2">
+            <div className="relative flex items-center">
+              <Search size={13} className="absolute left-2.5 text-gray-500 pointer-events-none shrink-0"/>
+              <input
+                value={searchQ}
+                onChange={e => setSearchQ(e.target.value)}
+                placeholder="Search questions, options, explanations…"
+                className="w-full bg-[#0d1117] text-sm text-white rounded-lg pl-8 pr-8 py-1.5 border border-white/8 focus:border-indigo-500/40 focus:outline-none focus:ring-1 focus:ring-indigo-500/10 placeholder-gray-600 transition-all"
+              />
+              {searchQ && (
+                <button
+                  onClick={() => setSearchQ("")}
+                  className="absolute right-2 text-gray-500 hover:text-gray-300 transition"
+                >
+                  <X size={13}/>
+                </button>
+              )}
+            </div>
+          </div>
         </div>
 
-        {/* Question list — larger, readable rows */}
+        {/* Question list — filtered by search */}
         <div className="flex-1 overflow-y-auto min-h-0">
           <div className="py-1">
-            {questions.map((qItem, i) => {
-              const isComplete = isQComplete(qItem)
-              const isPartial  = qItem.question.trim() && !isComplete
-              const isCurrent  = i === activeIdx
-              const firstLine  = qItem.question.split("\n").find(l=>l.trim()) || ""
-              return (
-                <button
-                  key={i}
-                  onClick={() => setActiveIdx(i)}
-                  className={`w-full flex items-center gap-2.5 px-3 py-2.5 text-left transition-all ${
-                    isCurrent
-                      ? "bg-indigo-500/10 border-l-2 border-l-indigo-500"
-                      : "hover:bg-white/3 border-l-2 border-l-transparent"
-                  }`}
-                >
-                  <span className={`w-2 h-2 rounded-full shrink-0 ${
-                    isCurrent   ? "bg-indigo-400"
-                    :isComplete ? "bg-emerald-400"
-                    :isPartial  ? "bg-amber-400"
-                    :"bg-gray-700"
-                  }`}/>
-                  <span className={`text-xs font-black shrink-0 w-6 tabular-nums ${
-                    isCurrent?"text-indigo-300":isComplete?"text-emerald-400":isPartial?"text-amber-400":"text-gray-500"
-                  }`}>{i+1}</span>
-                  <span className={`text-sm flex-1 truncate leading-snug ${
-                    isCurrent?"text-white font-medium":isComplete?"text-gray-200":"text-gray-400"
-                  }`}>
-                    {firstLine || <em className="opacity-40 text-xs">Empty question</em>}
-                  </span>
-                  {isComplete && <span className={`text-xs font-black shrink-0 w-5 h-5 rounded flex items-center justify-center ${
-                    isCurrent ? "bg-indigo-500/30 text-indigo-300" : "bg-emerald-500/20 text-emerald-400"
-                  }`}>{LABELS[qItem.correct]}</span>}
-                </button>
-              )
-            })}
+            {(() => {
+              const q_lower = searchQ.trim().toLowerCase()
+              const filtered = questions
+                .map((qItem, i) => ({ qItem, i }))
+                .filter(({ qItem }) => {
+                  if (!q_lower) return true
+                  if (qItem.question.toLowerCase().includes(q_lower)) return true
+                  return qItem.options.some(o =>
+                    o.text.toLowerCase().includes(q_lower) ||
+                    o.explanation.toLowerCase().includes(q_lower)
+                  )
+                })
+
+              if (filtered.length === 0) {
+                return (
+                  <div className="flex flex-col items-center justify-center py-8 px-4 text-center">
+                    <Search size={18} className="text-gray-600 mb-2"/>
+                    <p className="text-sm text-gray-500 font-medium">No matches found</p>
+                    <p className="text-xs text-gray-600 mt-0.5">Try different keywords</p>
+                  </div>
+                )
+              }
+
+              return filtered.map(({ qItem, i }) => {
+                const isComplete = isQComplete(qItem)
+                const isPartial  = qItem.question.trim() && !isComplete
+                const isCurrent  = i === activeIdx
+                const firstLine  = qItem.question.split("\n").find(l=>l.trim()) || ""
+
+                // highlight matched text
+                function highlight(text) {
+                  if (!q_lower || !text) return text
+                  const idx = text.toLowerCase().indexOf(q_lower)
+                  if (idx === -1) return text
+                  return (
+                    <>
+                      {text.slice(0, idx)}
+                      <mark className="bg-indigo-500/30 text-indigo-200 rounded px-0.5">{text.slice(idx, idx + q_lower.length)}</mark>
+                      {text.slice(idx + q_lower.length)}
+                    </>
+                  )
+                }
+
+                // find which field matched (for subtitle hint)
+                let matchHint = null
+                if (q_lower && !firstLine.toLowerCase().includes(q_lower)) {
+                  const matchedOpt = qItem.options.find(o =>
+                    o.text.toLowerCase().includes(q_lower) || o.explanation.toLowerCase().includes(q_lower)
+                  )
+                  if (matchedOpt) {
+                    const matchedField = matchedOpt.text.toLowerCase().includes(q_lower) ? matchedOpt.text : matchedOpt.explanation
+                    const idx2 = matchedField.toLowerCase().indexOf(q_lower)
+                    const snippet = matchedField.slice(Math.max(0, idx2 - 12), idx2 + q_lower.length + 20)
+                    matchHint = `…${snippet}…`
+                  }
+                }
+
+                return (
+                  <button
+                    key={i}
+                    onClick={() => setActiveIdx(i)}
+                    className={`w-full flex items-start gap-2.5 px-3 py-2.5 text-left transition-all ${
+                      isCurrent
+                        ? "bg-indigo-500/10 border-l-2 border-l-indigo-500"
+                        : "hover:bg-white/3 border-l-2 border-l-transparent"
+                    }`}
+                  >
+                    <span className={`w-2 h-2 rounded-full shrink-0 mt-1.5 ${
+                      isCurrent   ? "bg-indigo-400"
+                      :isComplete ? "bg-emerald-400"
+                      :isPartial  ? "bg-amber-400"
+                      :"bg-gray-700"
+                    }`}/>
+                    <span className={`text-xs font-black shrink-0 w-6 tabular-nums mt-0.5 ${
+                      isCurrent?"text-indigo-300":isComplete?"text-emerald-400":isPartial?"text-amber-400":"text-gray-500"
+                    }`}>{i+1}</span>
+                    <span className="flex-1 min-w-0">
+                      <span className={`text-sm block truncate leading-snug ${
+                        isCurrent?"text-white font-medium":isComplete?"text-gray-200":"text-gray-400"
+                      }`}>
+                        {firstLine ? highlight(firstLine) : <em className="opacity-40 text-xs">Empty question</em>}
+                      </span>
+                      {matchHint && (
+                        <span className="text-xs text-gray-500 truncate block mt-0.5 leading-snug">
+                          {highlight(matchHint)}
+                        </span>
+                      )}
+                    </span>
+                    {isComplete && <span className={`text-xs font-black shrink-0 w-5 h-5 rounded flex items-center justify-center mt-0.5 ${
+                      isCurrent ? "bg-indigo-500/30 text-indigo-300" : "bg-emerald-500/20 text-emerald-400"
+                    }`}>{LABELS[qItem.correct]}</span>}
+                  </button>
+                )
+              })
+            })()}
           </div>
         </div>
       </div>
