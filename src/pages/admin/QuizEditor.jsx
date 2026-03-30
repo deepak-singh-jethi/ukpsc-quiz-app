@@ -40,6 +40,40 @@ function qStatus(q) {
   return "complete"
 }
 
+// ─── Confirm Modal ────────────────────────────────────────────────────────────
+function ConfirmModal({ open, title, message, confirmLabel = "Confirm", onConfirm, onCancel }) {
+  if (!open) return null
+  return (
+    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={onCancel} />
+      <div className="relative w-full max-w-sm bg-[#0a0d13] border border-white/10 rounded-2xl shadow-2xl shadow-black/60 overflow-hidden">
+        {/* Header */}
+        <div className="flex items-center gap-3 px-5 pt-5 pb-3">
+          <div className="w-9 h-9 rounded-xl bg-rose-500/10 border border-rose-500/20 flex items-center justify-center shrink-0">
+            <Trash2 size={15} className="text-rose-400" />
+          </div>
+          <div>
+            <h3 className="text-sm font-bold text-white">{title}</h3>
+          </div>
+        </div>
+        {/* Body */}
+        <p className="text-xs text-gray-400 leading-relaxed px-5 pb-5">{message}</p>
+        {/* Footer */}
+        <div className="flex items-center justify-end gap-2 px-5 py-3 border-t border-white/8 bg-white/2">
+          <button onClick={onCancel}
+            className="px-4 py-2 rounded-lg text-xs font-bold text-gray-400 hover:text-white bg-white/5 hover:bg-white/10 border border-white/8 transition">
+            Cancel
+          </button>
+          <button onClick={onConfirm}
+            className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-bold bg-rose-500 hover:bg-rose-400 text-white transition">
+            <Trash2 size={11} /> {confirmLabel}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ─── Quiz Details Modal ───────────────────────────────────────────────────────
 function QuizDetailsModal({ meta, onChange, questionCount, onClose }) {
   const [draft, setDraft] = useState({ ...meta })
@@ -335,6 +369,7 @@ export default function QuizEditor() {
   const [saving, setSaving]       = useState(false)
   const [loading, setLoading]     = useState(true)
   const [detailsOpen, setDetailsOpen] = useState(false)
+  const [confirmDelete, setConfirmDelete] = useState(null) // index to delete
   const rightRef = useRef(null)
 
   // Keyboard nav: ← → arrow keys
@@ -390,7 +425,11 @@ export default function QuizEditor() {
   }
   function removeQuestion(i) {
     if (questions.length <= 3) return toast.error("Minimum 3 questions required")
-    if (!window.confirm("Remove this question?")) return
+    setConfirmDelete(i)
+  }
+  function doRemoveQuestion() {
+    const i = confirmDelete
+    setConfirmDelete(null)
     const next = questions.filter((_, idx) => idx !== i)
     setQuestions(next)
     setActiveQ(Math.min(activeQ, next.length - 1))
@@ -781,6 +820,16 @@ export default function QuizEditor() {
             onClose={() => setDetailsOpen(false)}
           />
         )}
+
+        {/* Delete Question Confirm Modal */}
+        <ConfirmModal
+          open={confirmDelete !== null}
+          title={`Remove Q${confirmDelete !== null ? confirmDelete + 1 : ""}?`}
+          message="This question will be permanently removed from the quiz. This cannot be undone."
+          confirmLabel="Remove Question"
+          onConfirm={doRemoveQuestion}
+          onCancel={() => setConfirmDelete(null)}
+        />
 
       </div>
     </AdminLayout>
