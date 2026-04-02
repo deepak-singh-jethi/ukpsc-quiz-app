@@ -8,7 +8,7 @@ import { useBookmark } from "../../hooks/useBookmark"
 import {
   ChevronLeft, ChevronRight,
   CheckCircle, XCircle, MinusCircle, Flame,
-  RotateCcw, Bookmark, Target,
+  RotateCcw, Bookmark, Target, BookOpen, X,
 } from "lucide-react"
 import Leaderboard from "../../components/Leaderboard"
 import { getLeaderboardKey } from "../../firebase/leaderboardService"
@@ -122,6 +122,7 @@ export default function AttemptReview() {
   const [dropOpen,     setDropOpen]     = useState(false)
   const [retestMode,   setRetestMode]   = useState(false)
   const [retestAnswers, setRetestAnswers] = useState({})   // key: "tabId_idx" → selected option index
+  const [reviewModal,  setReviewModal]  = useState(null)  // null | { ans, qNum }
   const dropRef = useRef(null)
   useEffect(() => {
     function handleClick(e) { if (dropRef.current && !dropRef.current.contains(e.target)) setDropOpen(false) }
@@ -668,6 +669,18 @@ export default function AttemptReview() {
                             </div>
                           )
                         })()}
+
+                        {/* View All Explanations button — only show if not in retest mode and at least one option has explanation */}
+                        {!retestMode && ans.options && ans.options.some(o => o.explanation) && (
+                          <div className="mt-4 pt-4 border-t border-gray-800/60">
+                            <button
+                              onClick={() => setReviewModal({ ans, qNum })}
+                              className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl border border-cyan-500/20 bg-cyan-500/5 hover:bg-cyan-500/10 hover:border-cyan-500/35 text-cyan-400 text-xs font-semibold transition-all group">
+                              <BookOpen size={13} className="group-hover:scale-110 transition-transform" />
+                              View All Explanations
+                            </button>
+                          </div>
+                        )}
                       </div>
                   </div>
                   </div>
@@ -694,6 +707,234 @@ export default function AttemptReview() {
           </div>
         </div>
       </div>
+
+      {/* ── DEEP REVIEW MODAL ── */}
+      {reviewModal && (() => {
+        const { ans, qNum } = reviewModal
+        const isCorr    = ans.selected === ans.correct
+        const isSkip    = ans.selected === -1 || ans.selected === undefined || ans.selected === null
+        const qType     = detectQType(ans.question || "")
+        const typeBadge = Q_TYPE_BADGE[qType]
+        const LETTERS   = ["A", "B", "C", "D"]
+
+        // Outcome accent colours (reused across header strip + badge)
+        const accentCls = isSkip
+          ? { strip: "bg-gray-700", badge: "text-gray-400 bg-gray-800/80 border-gray-700", label: "Skipped" }
+          : isCorr
+            ? { strip: "bg-emerald-500", badge: "text-emerald-400 bg-emerald-500/10 border-emerald-500/25", label: "Correct ✓" }
+            : { strip: "bg-rose-500",    badge: "text-rose-400 bg-rose-500/10 border-rose-500/25",          label: "Incorrect ✗" }
+
+        // Render question body inside modal — same smart renderer but with slightly larger text
+        function ModalQuestionBody() {
+          const text  = ans.question || ""
+          const lines = text.split("\n")
+          const isMatchQ = text.includes("सूची-I") || text.includes("List-I")
+          const isARQ    = text.includes("अभिकथन (A)") || text.includes("Assertion (A)") || text.includes("नीचे दो कथन दिए गए हैं")
+          const isStmtQ  = text.includes("कथनों पर विचार") || RE_STATEMENT.test(text)
+
+          if (isMatchQ) {
+            let intro = "", secA = [], secB = [], curSec = "intro", colALabel = "सूची-I", colBLabel = "सूची-II"
+            for (const line of lines) {
+              const t = line.trim(); if (!t) { if (curSec === "A") curSec = "B"; continue }
+              if (t.startsWith("सूची-II") || t.startsWith("List-II")) { colBLabel = t; curSec = "B"; continue }
+              if (t.startsWith("सूची-I")  || t.startsWith("List-I"))  { colALabel = t; curSec = "A"; continue }
+              if (curSec === "intro") intro = t; else if (curSec === "A") secA.push(t); else secB.push(t)
+            }
+            return (
+              <div className="space-y-3">
+                {intro && <p className="text-white text-sm font-semibold leading-relaxed">{intro}</p>}
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="bg-gray-950/60 border border-cyan-500/20 rounded-xl p-3.5">
+                    <p className="text-cyan-400 text-[10px] font-black mb-2.5 uppercase tracking-widest">{colALabel}</p>
+                    {secA.map((l, i) => <p key={i} className="text-gray-300 text-xs py-0.5 leading-relaxed">{l}</p>)}
+                  </div>
+                  <div className="bg-gray-950/60 border border-violet-500/20 rounded-xl p-3.5">
+                    <p className="text-violet-400 text-[10px] font-black mb-2.5 uppercase tracking-widest">{colBLabel}</p>
+                    {secB.map((l, i) => <p key={i} className="text-gray-300 text-xs py-0.5 leading-relaxed">{l}</p>)}
+                  </div>
+                </div>
+              </div>
+            )
+          }
+
+          if (isARQ) {
+            const aLine = lines.find(l => l.trim().startsWith("अभिकथन") || l.trim().startsWith("Assertion"))
+            const rLine = lines.find(l => l.trim().startsWith("कारण")   || l.trim().startsWith("Reason"))
+            const intro = lines[0]?.includes("नीचे दो कथन") ? lines[0].trim() : null
+            const rest  = lines.filter(l => l.trim() && l !== aLine && l !== rLine && !l.includes("नीचे दो कथन"))
+            return (
+              <div className="space-y-2.5">
+                {intro && <p className="text-gray-400 text-xs leading-relaxed">{intro}</p>}
+                {aLine && (
+                  <div className="bg-amber-500/6 border border-amber-500/20 rounded-xl px-4 py-3">
+                    <span className="text-amber-400 text-[10px] font-black uppercase tracking-widest block mb-1.5">अभिकथन (A)</span>
+                    <p className="text-gray-200 text-sm leading-relaxed">{aLine.replace(RE_ASSERTION, "")}</p>
+                  </div>
+                )}
+                {rLine && (
+                  <div className="bg-blue-500/6 border border-blue-500/20 rounded-xl px-4 py-3">
+                    <span className="text-blue-400 text-[10px] font-black uppercase tracking-widest block mb-1.5">कारण (R)</span>
+                    <p className="text-gray-200 text-sm leading-relaxed">{rLine.replace(RE_REASON, "")}</p>
+                  </div>
+                )}
+                {rest.map((l, i) => <p key={i} className="text-gray-300 text-sm font-medium leading-relaxed">{l}</p>)}
+              </div>
+            )
+          }
+
+          if (isStmtQ) {
+            // Split out numbered statements and the stem
+            const stmtLines = []
+            const otherLines = []
+            lines.forEach(l => {
+              const t = l.trim()
+              if (!t) return
+              if (/^\d+[\.\)]/.test(t)) stmtLines.push(t)
+              else otherLines.push(t)
+            })
+            return (
+              <div className="space-y-2.5">
+                {otherLines.map((l, i) => <p key={i} className="text-white text-sm font-semibold leading-relaxed">{l}</p>)}
+                {stmtLines.length > 0 && (
+                  <div className="bg-sky-500/5 border border-sky-500/15 rounded-xl px-4 py-3 space-y-2">
+                    {stmtLines.map((l, i) => (
+                      <div key={i} className="flex gap-2.5">
+                        <span className="shrink-0 w-5 h-5 rounded-md bg-sky-500/15 text-sky-400 text-[10px] font-black flex items-center justify-center mt-0.5">
+                          {i + 1}
+                        </span>
+                        <p className="text-gray-200 text-sm leading-relaxed">{l.replace(/^\d+[\.\)]\s*/, "")}</p>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )
+          }
+
+          // Direct question
+          return (
+            <div className="space-y-0.5">
+              {lines.map((line, li) =>
+                line.trim() === "" ? <br key={li} /> : <p key={li} className="text-white text-sm leading-relaxed">{line}</p>
+              )}
+            </div>
+          )
+        }
+
+        return (
+          <div
+            className="fixed inset-0 z-50 flex items-end lg:items-center justify-center p-0 lg:p-4"
+            onClick={() => setReviewModal(null)}
+          >
+            {/* Backdrop */}
+            <div className="absolute inset-0 bg-black/75 backdrop-blur-md" />
+
+            {/* Modal panel */}
+            <div
+              className="relative w-full lg:max-w-3xl bg-gray-900 border border-gray-700/50 rounded-t-3xl lg:rounded-2xl shadow-2xl flex flex-col max-h-[92vh] lg:max-h-[90vh] lg:[height:fit-content]"
+              style={{ boxShadow: "0 25px 80px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.04)" }}
+              onClick={e => e.stopPropagation()}
+            >
+              {/* Outcome colour strip */}
+              <div className={`h-1 w-full rounded-t-3xl lg:rounded-t-2xl shrink-0 ${accentCls.strip}`} />
+
+              {/* Drag handle — mobile only */}
+              <div className="flex justify-center pt-2 pb-0.5 lg:hidden shrink-0">
+                <div className="w-9 h-1 rounded-full bg-gray-700/80" />
+              </div>
+
+              {/* ── HEADER ── */}
+              <div className="px-5 pt-3 pb-3 border-b border-gray-800/70 shrink-0">
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="text-xs font-black text-gray-400 tracking-wide">Q{qNum}</span>
+                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md border leading-none ${typeBadge.cls}`}>{typeBadge.label}</span>
+                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md border leading-none ${accentCls.badge}`}>{accentCls.label}</span>
+                  <button onClick={() => setReviewModal(null)}
+                    className="ml-auto p-1.5 rounded-lg text-gray-500 hover:text-white hover:bg-gray-800/80 transition-colors">
+                    <X size={15} />
+                  </button>
+                </div>
+                <ModalQuestionBody />
+              </div>
+
+              {/* ── BODY ── */}
+              <div className="overflow-y-auto flex-1 min-h-0 px-5 py-3 space-y-2">
+                <p className="text-[9px] font-black uppercase tracking-widest text-gray-600 mb-2">All Options &amp; Explanations</p>
+
+                {ans.options.map((o, k) => {
+                  const isCorrOpt = k === ans.correct
+                  const isSelOpt  = k === ans.selected
+                  const isWrong   = isSelOpt && !isCorrOpt
+                  const letter    = LETTERS[k]
+                  const optText   = typeof o === "string" ? o : o.text
+                  const expl      = typeof o === "string" ? null : o.explanation
+
+                  const cardBorder = isCorrOpt ? "border-emerald-500/35" : isWrong ? "border-rose-500/35" : "border-gray-800/50"
+                  const headerBg   = isCorrOpt ? "bg-emerald-500/8"      : isWrong ? "bg-rose-500/8"      : "bg-gray-800/20"
+                  const explBg     = isCorrOpt ? "bg-emerald-500/5 border-emerald-500/12 text-emerald-300/85"
+                                   : isWrong   ? "bg-rose-500/5 border-rose-500/12 text-rose-300/75"
+                                   : "bg-gray-900/50 border-gray-800/40 text-gray-500"
+                  const dotBg  = isCorrOpt ? "bg-emerald-500 text-white" : isWrong ? "bg-rose-500 text-white" : "bg-gray-800 text-gray-500"
+                  const textCls = isCorrOpt ? "text-white font-medium" : isWrong ? "text-rose-200" : "text-gray-500"
+
+                  return (
+                    <div key={k} className={`rounded-lg border overflow-hidden ${cardBorder}`}>
+                      {/* Option row */}
+                      <div className={`flex items-center gap-2.5 px-3 py-2 ${headerBg}`}>
+                        <span className={`shrink-0 w-5 h-5 rounded-md flex items-center justify-center text-[10px] font-black ${dotBg}`}>
+                          {letter}
+                        </span>
+                        <p className={`flex-1 text-xs leading-snug ${textCls}`}>{optText}</p>
+                        <span className="shrink-0 flex items-center gap-1">
+                          {isCorrOpt && (
+                            <span className="flex items-center gap-1 text-emerald-400">
+                              <CheckCircle size={13} />
+                              {isSelOpt && <span className="text-[10px] font-bold text-emerald-400/70">Your answer</span>}
+                            </span>
+                          )}
+                          {isWrong && (
+                            <span className="flex items-center gap-1 text-rose-400">
+                              <XCircle size={13} />
+                              <span className="text-[10px] font-bold text-rose-400/70">Your answer</span>
+                            </span>
+                          )}
+                        </span>
+                      </div>
+
+                      {/* Explanation */}
+                      {expl ? (
+                        <div className={`px-3 py-2 border-t text-[11px] leading-relaxed ${explBg}`}>
+                          <span className={`inline-block text-[8px] font-black uppercase tracking-widest mr-1.5 ${
+                            isCorrOpt ? "text-emerald-500/60" : isWrong ? "text-rose-500/60" : "text-gray-600"
+                          }`}>Explanation —</span>
+                          {expl}
+                        </div>
+                      ) : (
+                        <div className="px-3 py-1.5 border-t border-gray-800/30 bg-gray-900/30 flex items-center gap-1.5">
+                          <MinusCircle size={9} className="text-gray-700 shrink-0" />
+                          <p className="text-[10px] text-gray-700 italic">No explanation</p>
+                        </div>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+
+              {/* ── FOOTER ── */}
+              <div className="px-5 py-2.5 border-t border-gray-800/60 shrink-0 flex items-center gap-3">
+                <p className="text-[10px] text-gray-600 flex-1">
+                  {ans.options.filter(o => (typeof o === "object" && o.explanation)).length} of {ans.options.length} options have explanations
+                </p>
+                <button
+                  onClick={() => setReviewModal(null)}
+                  className="px-4 py-1.5 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-300 text-xs font-semibold transition-colors">
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        )
+      })()}
     </div>
   )
 }
