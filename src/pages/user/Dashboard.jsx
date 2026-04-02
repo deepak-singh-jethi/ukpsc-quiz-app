@@ -7,8 +7,9 @@ import { cachedGetDocs, TTL_LONG, TTL_SHORT } from "../../firebase/firestoreCach
 import Navbar from "../../components/Navbar"
 import QuizCard from "../../components/QuizCard"
 import {
-  Search, SlidersHorizontal, X, Trophy,
-  GraduationCap, BookOpen, Megaphone, Globe
+  Search, X, Trophy,
+  GraduationCap, BookOpen, Globe,
+  AlertTriangle, ChevronRight, ChevronDown, Zap, CheckCircle2, RotateCcw
 } from "lucide-react"
 
 function isNew(quiz) {
@@ -46,6 +47,278 @@ function SkeletonSection({ count = 4 }) {
   )
 }
 
+// ── Score ring SVG ────────────────────────────────────────────────────────────
+function ScoreRing({ score, size = 36 }) {
+  const r = 14, cx = 18, cy = 18
+  const circ = 2 * Math.PI * r
+  const dash  = ((score || 0) / 100) * circ
+  const color = score >= 80 ? "#34d399" : score >= 60 ? "#fbbf24" : "#f87171"
+  return (
+    <svg width={size} height={size} viewBox="0 0 36 36" className="shrink-0">
+      <circle cx={cx} cy={cy} r={r} fill="none" stroke="#1f2937" strokeWidth="3" />
+      <circle cx={cx} cy={cy} r={r} fill="none" stroke={color} strokeWidth="3"
+        strokeDasharray={`${dash} ${circ}`} strokeLinecap="round"
+        transform="rotate(-90 18 18)" />
+      <text x="18" y="22" textAnchor="middle" fontSize="8" fontWeight="800" fill={color}>{score}%</text>
+    </svg>
+  )
+}
+
+// ── Compact row for "Up Next" quizzes ─────────────────────────────────────────
+function QuizRow({ quiz, batchId, navigate }) {
+  const DIFF = { easy: "text-green-400", medium: "text-yellow-400", hard: "text-red-400" }
+  return (
+    <div
+      onClick={() => navigate(`/quiz/${quiz.id}/detail${batchId ? `?batchId=${batchId}` : ""}`)}
+      className="flex items-center gap-3 px-4 py-3 rounded-xl border border-gray-800/60 bg-gray-900/40 hover:border-cyan-500/30 hover:bg-gray-900/80 cursor-pointer transition-all group"
+    >
+      <div className="w-7 h-7 rounded-lg bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center shrink-0">
+        <BookOpen size={13} className="text-cyan-400" />
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className="text-sm font-semibold text-white truncate group-hover:text-cyan-400 transition-colors">{quiz.title}</p>
+        <p className="text-[11px] text-gray-600 mt-0.5">
+          {quiz.questionCount || 0}Q · {quiz.totalTime || 10}m
+          {quiz.negativeMark > 0 && <span className="text-red-600 ml-1.5">-{quiz.negativeMark}</span>}
+        </p>
+      </div>
+      <span className={`text-[10px] font-bold capitalize shrink-0 ${DIFF[quiz.difficulty] || DIFF.medium}`}>
+        {quiz.difficulty || "medium"}
+      </span>
+      <span className="text-cyan-400 text-xs font-semibold flex items-center gap-0.5 shrink-0 group-hover:gap-1.5 transition-all">
+        Start <ChevronRight size={12} />
+      </span>
+    </div>
+  )
+}
+
+// ── Compact row for "Done" quizzes ────────────────────────────────────────────
+function DoneRow({ quiz, bestScore, attemptCount, rank, batchId, navigate }) {
+  return (
+    <div
+      onClick={() => navigate(`/quiz/${quiz.id}/detail${batchId ? `?batchId=${batchId}` : ""}`)}
+      className="flex items-center gap-3 px-4 py-2.5 rounded-xl border border-gray-800/40 bg-gray-900/20 hover:border-gray-700 hover:bg-gray-900/60 cursor-pointer transition-all group"
+    >
+      <ScoreRing score={bestScore} size={32} />
+      <div className="flex-1 min-w-0">
+        <p className="text-sm text-gray-300 truncate group-hover:text-white transition-colors">{quiz.title}</p>
+        <p className="text-[11px] text-gray-600 mt-0.5">{attemptCount} {attemptCount === 1 ? "attempt" : "attempts"}{rank ? ` · #${rank} rank` : ""}</p>
+      </div>
+      <span className="text-gray-600 text-xs flex items-center gap-0.5 shrink-0 group-hover:text-gray-400 transition-all">
+        View <ChevronRight size={12} />
+      </span>
+    </div>
+  )
+}
+
+// ── Needs Retry card ──────────────────────────────────────────────────────────
+function RetryRow({ quiz, bestScore, attemptCount, batchId, navigate }) {
+  return (
+    <div
+      onClick={() => navigate(`/quiz/${quiz.id}/detail${batchId ? `?batchId=${batchId}` : ""}`)}
+      className="flex items-center gap-3 px-4 py-3 rounded-xl border border-amber-500/20 bg-amber-500/5 hover:border-amber-500/40 hover:bg-amber-500/8 cursor-pointer transition-all group"
+    >
+      <ScoreRing score={bestScore} size={34} />
+      <div className="flex-1 min-w-0">
+        <p className="text-sm font-semibold text-white truncate">{quiz.title}</p>
+        <p className="text-[11px] text-amber-400/60 mt-0.5">{attemptCount} {attemptCount === 1 ? "attempt" : "attempts"} · needs improvement</p>
+      </div>
+      <span className="text-amber-400 text-xs font-semibold flex items-center gap-0.5 shrink-0 group-hover:gap-1.5 transition-all">
+        <RotateCcw size={11} /> Retry
+      </span>
+    </div>
+  )
+}
+
+// ── BatchSection ──────────────────────────────────────────────────────────────
+function BatchSection({ batch, needsRetry, upNext, done, totalCount, doneCount, pct, avgScore, hasFilters, navigate }) {
+  const [doneOpen, setDoneOpen] = useState(false)
+  const DONE_PREVIEW = 4
+
+  if (totalCount === 0 && hasFilters) return null
+
+  return (
+    <section className="mb-8">
+      {/* ── Command strip ── */}
+      <div className="rounded-2xl border border-gray-800 bg-gray-900/60 px-5 py-4 mb-4">
+        <div className="flex items-center gap-3 mb-3">
+          <GraduationCap size={15} className="text-purple-400 shrink-0" />
+          <h2 className="text-base font-bold text-white flex-1 min-w-0 truncate">{batch.name}</h2>
+          <span className="text-xs bg-purple-500/10 text-purple-400 border border-purple-500/20 px-2 py-0.5 rounded-full font-bold shrink-0">Batch</span>
+          <button onClick={() => navigate("/batches")} className="text-xs text-gray-600 hover:text-purple-400 transition shrink-0">
+            Details →
+          </button>
+        </div>
+        {/* Progress bar */}
+        <div className="flex items-center gap-3">
+          <div className="flex-1 h-1.5 bg-gray-800 rounded-full overflow-hidden">
+            <div
+              className={`h-full rounded-full transition-all duration-700 ${pct === 100 ? "bg-emerald-500" : pct >= 60 ? "bg-cyan-500" : "bg-purple-500"}`}
+              style={{ width: `${pct}%` }}
+            />
+          </div>
+          <span className="text-xs text-gray-500 shrink-0 tabular-nums">{doneCount}/{totalCount} done</span>
+          {avgScore !== null && (
+            <span className={`text-xs font-bold shrink-0 tabular-nums ${avgScore >= 80 ? "text-emerald-400" : avgScore >= 60 ? "text-amber-400" : "text-rose-400"}`}>
+              avg {avgScore}%
+            </span>
+          )}
+          {needsRetry.length > 0 && (
+            <span className="text-xs font-bold text-amber-400 flex items-center gap-1 shrink-0">
+              <AlertTriangle size={11} /> {needsRetry.length} need retry
+            </span>
+          )}
+        </div>
+      </div>
+
+      {totalCount === 0 ? (
+        <div className="border border-dashed border-gray-800 rounded-2xl p-8 text-center">
+          <p className="text-gray-600 text-sm">No quizzes assigned yet.</p>
+        </div>
+      ) : (
+        <div className="space-y-5">
+
+          {/* ── ① Needs Attention ── */}
+          {needsRetry.length > 0 && (
+            <div>
+              <div className="flex items-center gap-2 mb-2.5">
+                <AlertTriangle size={12} className="text-amber-400" />
+                <span className="text-xs font-black uppercase tracking-widest text-amber-400/80">Needs Attention</span>
+                <span className="text-[10px] text-amber-400/40 font-bold bg-amber-500/10 border border-amber-500/15 px-1.5 py-0.5 rounded-full">{needsRetry.length}</span>
+              </div>
+              <div className="space-y-1.5">
+                {needsRetry.map(({ quiz, bestScore, attemptCount }) => (
+                  <RetryRow key={quiz.id} quiz={quiz} bestScore={bestScore} attemptCount={attemptCount} batchId={batch.id} navigate={navigate} />
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* ── ② Up Next ── */}
+          {upNext.length > 0 && (
+            <div>
+              <div className="flex items-center gap-2 mb-2.5">
+                <Zap size={12} className="text-cyan-400" />
+                <span className="text-xs font-black uppercase tracking-widest text-cyan-400/80">Up Next</span>
+                <span className="text-[10px] text-cyan-400/40 font-bold bg-cyan-500/10 border border-cyan-500/15 px-1.5 py-0.5 rounded-full">{upNext.length}</span>
+              </div>
+              <div className="space-y-1.5">
+                {upNext.map(({ quiz }) => (
+                  <QuizRow key={quiz.id} quiz={quiz} batchId={batch.id} navigate={navigate} />
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* ── ③ Completed ── */}
+          {done.length > 0 && (
+            <div>
+              <div className="flex items-center gap-2 mb-2.5">
+                <CheckCircle2 size={12} className="text-gray-500" />
+                <span className="text-xs font-black uppercase tracking-widest text-gray-600">Completed</span>
+                <span className="text-[10px] text-gray-600 font-bold bg-gray-800 border border-gray-700/50 px-1.5 py-0.5 rounded-full">{done.length}</span>
+              </div>
+              <div className="space-y-1.5">
+                {(doneOpen ? done : done.slice(0, DONE_PREVIEW)).map(({ quiz, bestScore, attemptCount, rank }) => (
+                  <DoneRow key={quiz.id} quiz={quiz} bestScore={bestScore} attemptCount={attemptCount} rank={rank} batchId={batch.id} navigate={navigate} />
+                ))}
+              </div>
+              {done.length > DONE_PREVIEW && (
+                <button
+                  onClick={() => setDoneOpen(o => !o)}
+                  className="mt-2 w-full flex items-center justify-center gap-1.5 py-2 rounded-xl border border-gray-800/60 text-xs text-gray-600 hover:text-gray-400 hover:border-gray-700 transition">
+                  <ChevronDown size={12} className={`transition-transform ${doneOpen ? "rotate-180" : ""}`} />
+                  {doneOpen ? "Show less" : `Show ${done.length - DONE_PREVIEW} more completed`}
+                </button>
+              )}
+            </div>
+          )}
+
+          {/* All done — celebration state */}
+          {upNext.length === 0 && needsRetry.length === 0 && done.length > 0 && (
+            <div className="flex items-center gap-2 px-4 py-3 rounded-xl bg-emerald-500/5 border border-emerald-500/15">
+              <Trophy size={14} className="text-emerald-400 shrink-0" />
+              <p className="text-sm text-emerald-400/80 font-medium">All quizzes completed with good scores!</p>
+            </div>
+          )}
+        </div>
+      )}
+    </section>
+  )
+}
+
+// ── FreeSection ───────────────────────────────────────────────────────────────
+function FreeSection({ upNext, done, hasFilters, navigate }) {
+  const [doneOpen, setDoneOpen] = useState(false)
+  const DONE_PREVIEW = 4
+
+  if (upNext.length === 0 && done.length === 0) return null
+
+  const doneCount  = done.length
+  const totalCount = upNext.length + doneCount
+
+  return (
+    <section className="mb-8">
+      {/* Header */}
+      <div className="rounded-2xl border border-gray-800 bg-gray-900/60 px-5 py-4 mb-4">
+        <div className="flex items-center gap-3 mb-3">
+          <Globe size={15} className="text-cyan-400 shrink-0" />
+          <h2 className="text-base font-bold text-white flex-1">Free Quizzes</h2>
+          <span className="text-xs bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 px-2 py-0.5 rounded-full font-bold shrink-0">Open</span>
+        </div>
+        <div className="flex items-center gap-3">
+          <div className="flex-1 h-1.5 bg-gray-800 rounded-full overflow-hidden">
+            <div className="h-full rounded-full bg-cyan-500 transition-all duration-700"
+              style={{ width: `${totalCount > 0 ? Math.round((doneCount / totalCount) * 100) : 0}%` }} />
+          </div>
+          <span className="text-xs text-gray-500 shrink-0 tabular-nums">{doneCount}/{totalCount} done</span>
+        </div>
+      </div>
+
+      <div className="space-y-5">
+        {upNext.length > 0 && (
+          <div>
+            <div className="flex items-center gap-2 mb-2.5">
+              <Zap size={12} className="text-cyan-400" />
+              <span className="text-xs font-black uppercase tracking-widest text-cyan-400/80">Available</span>
+              <span className="text-[10px] text-cyan-400/40 font-bold bg-cyan-500/10 border border-cyan-500/15 px-1.5 py-0.5 rounded-full">{upNext.length}</span>
+            </div>
+            <div className="space-y-1.5">
+              {upNext.map(q => (
+                <QuizRow key={q.id} quiz={q} batchId={null} navigate={navigate} />
+              ))}
+            </div>
+          </div>
+        )}
+
+        {done.length > 0 && (
+          <div>
+            <div className="flex items-center gap-2 mb-2.5">
+              <CheckCircle2 size={12} className="text-gray-500" />
+              <span className="text-xs font-black uppercase tracking-widest text-gray-600">Completed</span>
+              <span className="text-[10px] text-gray-600 font-bold bg-gray-800 border border-gray-700/50 px-1.5 py-0.5 rounded-full">{done.length}</span>
+            </div>
+            <div className="space-y-1.5">
+              {(doneOpen ? done : done.slice(0, DONE_PREVIEW)).map(({ quiz, bestScore, attemptCount, rank }) => (
+                <DoneRow key={quiz.id} quiz={quiz} bestScore={bestScore} attemptCount={attemptCount} rank={rank} batchId={null} navigate={navigate} />
+              ))}
+            </div>
+            {done.length > DONE_PREVIEW && (
+              <button
+                onClick={() => setDoneOpen(o => !o)}
+                className="mt-2 w-full flex items-center justify-center gap-1.5 py-2 rounded-xl border border-gray-800/60 text-xs text-gray-600 hover:text-gray-400 hover:border-gray-700 transition">
+                <ChevronDown size={12} className={`transition-transform ${doneOpen ? "rotate-180" : ""}`} />
+                {doneOpen ? "Show less" : `Show ${done.length - DONE_PREVIEW} more completed`}
+              </button>
+            )}
+          </div>
+        )}
+      </div>
+    </section>
+  )
+}
+
+// ── Main component ────────────────────────────────────────────────────────────
 export default function Dashboard() {
   const { currentUser, userProfile } = useAuth()
   const navigate = useNavigate()
@@ -285,12 +558,10 @@ export default function Dashboard() {
     <div className="min-h-screen bg-gray-950 text-white">
       <Navbar />
       <div className="max-w-7xl mx-auto px-6 py-6">
-      
-      
 
-        {/* Announcements — pinned first, then regular */}
+        {/* ── ANNOUNCEMENTS ── */}
         {[...visibleAnn]
-          .filter(a => !(a.expiresAt && new Date(a.expiresAt) < new Date())) // hide expired
+          .filter(a => !(a.expiresAt && new Date(a.expiresAt) < new Date()))
           .sort((a, b) => (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0))
           .map(ann => {
             const cfg =
@@ -319,90 +590,23 @@ export default function Dashboard() {
           })
         }
 
-        {/* ── SEARCH + FILTERS ── */}
-        <div className="flex flex-wrap items-center gap-3 mb-6">
-          <div className="relative flex-1 min-w-48">
-            <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-600" />
-            <input
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-              placeholder="Search quizzes..."
-              className="w-full bg-gray-900 border border-gray-800 rounded-xl pl-9 pr-4 py-2 text-sm text-white placeholder-gray-600 focus:border-gray-700 focus:outline-none"
-            />
-          </div>
-          <div className="flex items-center gap-2">
-            <SlidersHorizontal size={13} className="text-gray-600" />
-            <select value={diffFilter} onChange={e => setDiffFilter(e.target.value)}
-              className="bg-gray-900 border border-gray-800 rounded-xl px-3 py-2 text-sm text-gray-400 focus:outline-none cursor-pointer">
-              <option value="all">All Levels</option>
-              <option value="easy">Easy</option>
-              <option value="medium">Medium</option>
-              <option value="hard">Hard</option>
-            </select>
-            {categories.length > 0 && (
-              <select value={catFilter} onChange={e => setCatFilter(e.target.value)}
-                className="bg-gray-900 border border-gray-800 rounded-xl px-3 py-2 text-sm text-gray-400 focus:outline-none cursor-pointer">
-                <option value="all">All Categories</option>
-                {categories.map(c => <option key={c} value={c}>{c}</option>)}
-              </select>
-            )}
-            {hasFilters && (
-              <button onClick={() => { setSearch(""); setDiffFilter("all"); setCatFilter("all") }}
-                className="text-xs text-gray-500 hover:text-white border border-gray-800 px-2.5 py-2 rounded-xl transition flex items-center gap-1">
-                <X size={12} /> Clear
-              </button>
-            )}
-          </div>
+        {/* ── SEARCH ── */}
+        <div className="relative mb-6">
+          <Search size={13} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-600" />
+          <input
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            placeholder="Search quizzes..."
+            className="w-full bg-gray-900 border border-gray-800 rounded-xl pl-9 pr-4 py-2.5 text-sm text-white placeholder-gray-600 focus:border-gray-700 focus:outline-none"
+          />
+          {search && (
+            <button onClick={() => setSearch("")} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-600 hover:text-white transition">
+              <X size={13} />
+            </button>
+          )}
         </div>
 
-        {/* ── SECTION TABS — rendered as soon as we know batch count ── */}
-        {(hasBatches || freeQuizzes.length > 0 || attemptedFree.length > 0) && (
-          <div className="flex gap-2 mb-6 flex-wrap">
-            <button
-              onClick={() => setActiveSection("all")}
-              className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold border transition ${
-                activeSection === "all"
-                  ? "bg-cyan-500/10 text-cyan-400 border-cyan-500/30"
-                  : "bg-gray-900 text-gray-500 border-gray-800 hover:text-white"
-              }`}
-            >
-              <BookOpen size={13} /> All Quizzes
-            </button>
-            {batchSections.map(s => (
-              <button
-                key={s.batch.id}
-                onClick={() => setActiveSection(s.batch.id)}
-                className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold border transition ${
-                  activeSection === s.batch.id
-                    ? "bg-purple-500/10 text-purple-400 border-purple-500/30"
-                    : "bg-gray-900 text-gray-500 border-gray-800 hover:text-white"
-                }`}
-              >
-                <GraduationCap size={13} /> {s.batch.name}
-                <span className={`text-xs font-black ml-0.5 ${activeSection === s.batch.id ? "text-purple-500" : "text-gray-700"}`}>
-                  {s.quizzes.length}
-                </span>
-              </button>
-            ))}
-            {(freeQuizzes.length > 0 || attemptedFree.length > 0) && (
-              <button
-                onClick={() => setActiveSection("__free__")}
-                className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold border transition ${
-                  activeSection === "__free__"
-                    ? "bg-cyan-500/10 text-cyan-400 border-cyan-500/30"
-                    : "bg-gray-900 text-gray-500 border-gray-800 hover:text-white"
-                }`}
-              >
-                <Globe size={13} /> Free
-                <span className={`text-xs font-black ml-0.5 ${activeSection === "__free__" ? "text-cyan-500" : "text-gray-700"}`}>
-                  {unattemptedFree.length + attemptedFree.length}
-                </span>
-              </button>
-            )}
-          </div>
-        )}
-
-        {/* ── PHASE 1 SKELETON — shown until first data arrives ── */}
+        {/* ── SKELETON ── */}
         {loading ? (
           <>
             <SkeletonSection count={3} />
@@ -410,85 +614,63 @@ export default function Dashboard() {
           </>
         ) : (
           <>
-            {/* ── BATCH QUIZ SECTIONS ── */}
-            {(activeSection === "all" || batchSections.some(s => s.batch.id === activeSection)) &&
-              (activeSection === "all" ? batchSections : shownBatchSections).map(({ batch, quizzes }) => {
+            {/* ══════════════════════════════════════════
+                BATCH SECTIONS
+            ══════════════════════════════════════════ */}
+            {shownBatchSections.map(({ batch, quizzes }) => {
               const filtered = quizzes.filter(({ quiz }) => matchFilters(quiz))
               if (filtered.length === 0 && hasFilters) return null
+
+              // Separate into three buckets
+              const needsRetry = filtered.filter(({ attempted, bestScore }) => attempted && bestScore < 70)
+              const upNext     = filtered.filter(({ attempted }) => !attempted)
+              const done       = filtered.filter(({ attempted, bestScore }) => attempted && bestScore >= 70)
+
+              const totalCount  = filtered.length
+              const doneCount   = filtered.filter(({ attempted }) => attempted).length
+              const pct         = totalCount > 0 ? Math.round((doneCount / totalCount) * 100) : 0
+              const avgScore    = doneCount > 0
+                ? Math.round(filtered.filter(({ attempted }) => attempted).reduce((s, { bestScore }) => s + (bestScore || 0), 0) / doneCount)
+                : null
+
               return (
-                <section key={batch.id} className="mb-10">
-                  <div className="flex items-center gap-2 mb-4">
-                    <GraduationCap size={15} className="text-purple-400" />
-                    <h2 className="text-base font-bold text-white">{batch.name}</h2>
-                    <span className="text-xs bg-purple-500/10 text-purple-400 border border-purple-500/20 px-2 py-0.5 rounded-full font-bold">Batch</span>
-                    <span className="text-xs text-gray-600 ml-1">{filtered.length} quiz{filtered.length !== 1 ? "zes" : ""}</span>
-                    <button onClick={() => navigate("/batches")} className="ml-auto text-xs text-gray-600 hover:text-purple-400 transition flex items-center gap-1">
-                      Batch details
-                    </button>
-                  </div>
-                  {filtered.length === 0 ? (
-                    <div className="border border-dashed border-gray-800 rounded-2xl p-8 text-center">
-                      <p className="text-gray-600 text-sm">No quizzes assigned yet.</p>
-                    </div>
-                  ) : (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                      {filtered.map(({ quiz, attempted, bestScore, rank, attemptCount }) => (
-                        <QuizCard key={quiz.id} quiz={quiz} attempted={attempted} bestScore={bestScore} rank={rank} attemptCount={attemptCount} batchId={batch.id} />
-                      ))}
-                    </div>
-                  )}
-                </section>
+                <BatchSection
+                  key={batch.id}
+                  batch={batch}
+                  needsRetry={needsRetry}
+                  upNext={upNext}
+                  done={done}
+                  totalCount={totalCount}
+                  doneCount={doneCount}
+                  pct={pct}
+                  avgScore={avgScore}
+                  hasFilters={hasFilters}
+                  navigate={navigate}
+                />
               )
             })}
 
-            {/* ── FREE QUIZZES ── Phase 2 shows skeleton until loaded ── */}
+            {/* ══════════════════════════════════════════
+                FREE QUIZZES
+            ══════════════════════════════════════════ */}
             {(activeSection === "all" || activeSection === "__free__") && (
               !phase2Done ? (
                 <SkeletonSection count={4} />
               ) : (
                 <>
-                  {(filteredFree.length > 0 || (!hasFilters && unattemptedFree.length === 0 && attemptedFree.length === 0 && batchSections.length === 0)) && (
-                    <section className="mb-10">
-                      <div className="flex items-center gap-2 mb-4">
-                        <Globe size={14} className="text-cyan-400" />
-                        <h2 className="text-base font-bold text-white">Available Quizzes</h2>
-                        <span className="text-xs bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 px-2 py-0.5 rounded-full font-bold">{filteredFree.length}</span>
-                        <span className="text-xs text-gray-600 ml-1">Free for everyone</span>
-                      </div>
-                      {filteredFree.length === 0 && !hasFilters ? (
-                        <div className="border border-dashed border-gray-800 rounded-2xl p-10 text-center">
-                          <Trophy size={32} className="mx-auto text-gray-700 mb-3" />
-                          <p className="text-gray-500 text-sm">No new quizzes right now. Check back soon!</p>
-                        </div>
-                      ) : (
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                          {filteredFree.map(q => (
-                            <QuizCard key={q.id} quiz={q} attempted={false} isNew={isNew(q)} />
-                          ))}
-                        </div>
-                      )}
-                    </section>
-                  )}
-
-                  {filteredAttemptedFree.length > 0 && (
-                    <section className="mb-10">
-                      <div className="flex items-center gap-2 mb-4">
-                        <BookOpen size={14} className="text-gray-400" />
-                        <h2 className="text-base font-bold text-white">Attempted Quizzes</h2>
-                        <span className="text-xs bg-gray-700 text-gray-400 border border-gray-700 px-2 py-0.5 rounded-full font-bold">{filteredAttemptedFree.length}</span>
-                      </div>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                        {filteredAttemptedFree.map(({ quiz, bestScore, rank, attemptCount }) => (
-                          <QuizCard key={quiz.id} quiz={quiz} attempted bestScore={bestScore} rank={rank} attemptCount={attemptCount} />
-                        ))}
-                      </div>
-                    </section>
+                  {(filteredFree.length > 0 || filteredAttemptedFree.length > 0) && (
+                    <FreeSection
+                      upNext={filteredFree}
+                      done={filteredAttemptedFree}
+                      hasFilters={hasFilters}
+                      navigate={navigate}
+                    />
                   )}
                 </>
               )
             )}
 
-            {/* Empty state */}
+            {/* ── EMPTY STATE ── */}
             {phase2Done && freeQuizzes.length === 0 && attemptedFree.length === 0 && batchSections.length === 0 && (
               <div className="text-center py-20">
                 <div className="text-6xl mb-4">🎯</div>
