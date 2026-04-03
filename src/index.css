@@ -7,3 +7,23 @@ body {
   background-color: #030712; /* gray-950 — matches bg-gray-950 used everywhere */
   overscroll-behavior: none; /* prevents the bounce revealing white on iOS/Mac */
 }
+
+/* Safe area support for iPhone notch / home indicator */
+.safe-area-inset-bottom {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+/* Prevent iOS tap highlight on interactive elements */
+button, a, [role="button"] {
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Prevent text zoom on input focus (iOS) */
+input, select, textarea {
+  font-size: max(16px, 1em);
+}
+
+/* Allow smooth scroll on iOS */
+.overflow-y-auto, .overflow-auto {
+  -webkit-overflow-scrolling: touch;
+}
