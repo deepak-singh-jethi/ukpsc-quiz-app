@@ -144,6 +144,7 @@ export function AuthProvider({ children }) {
         }
 
         // ── Update React state with latest profile data ──────────────────────
+        clearLoadingTimeout()  // snapshot arrived — cancel the safety timeout
         setUserRole(data.role ?? "user")
         setUserProfile(profile)
         setUserBanned(false)
@@ -155,6 +156,7 @@ export function AuthProvider({ children }) {
         console.error("[AuthContext] Profile listener error:", error.code)
         // Don't sign out on permission errors — the user may have just been
         // created and rules haven't propagated yet. Just log and continue.
+        clearLoadingTimeout()
         setLoading(false)
       }
     )
@@ -177,6 +179,16 @@ export function AuthProvider({ children }) {
     clearCache()
   }
 
+  // ── Safety timeout ref — prevents loading from hanging forever ────────────
+  const loadingTimeoutRef = useRef(null)
+
+  function clearLoadingTimeout() {
+    if (loadingTimeoutRef.current) {
+      clearTimeout(loadingTimeoutRef.current)
+      loadingTimeoutRef.current = null
+    }
+  }
+
   // ── Main auth state observer ───────────────────────────────────────────────
   useEffect(() => {
     const unsubscribeAuth = onAuthStateChanged(auth, (user) => {
@@ -191,9 +203,20 @@ export function AuthProvider({ children }) {
         // until onSnapshot fires and sets the correct role.
         // onSnapshot callback sets loading=false once role is known.
         setLoading(true)
+
+        // ── Safety net: if onSnapshot never fires (network issue, Firestore
+        // rules blocking the read, cold-start timeout), release the loading
+        // gate after 8 seconds so the app doesn't hang on a blank screen.
+        clearLoadingTimeout()
+        loadingTimeoutRef.current = setTimeout(() => {
+          console.warn("[AuthContext] Profile snapshot timed out — releasing loading gate")
+          setLoading(false)
+        }, 8000)
+
         attachProfileListener(user.uid)
       } else {
         // User logged out — clean up everything.
+        clearLoadingTimeout()
         detachProfileListener()
         setLoading(false)
       }
@@ -202,6 +225,7 @@ export function AuthProvider({ children }) {
     // Cleanup: detach both listeners when the AuthProvider unmounts
     return () => {
       unsubscribeAuth()
+      clearLoadingTimeout()
       if (unsubscribeProfileRef.current) {
         unsubscribeProfileRef.current()
       }
