@@ -111,7 +111,7 @@ export default function QuizDetail() {
     <div className="min-h-screen bg-gray-950 text-white">
       <Navbar />
 
-      <div className="max-w-7xl mx-auto px-6 py-6">
+      <div className="max-w-7xl mx-auto px-3 sm:px-6 py-4 sm:py-6 pb-24 sm:pb-6">
 
         {/* Back */}
         <button
