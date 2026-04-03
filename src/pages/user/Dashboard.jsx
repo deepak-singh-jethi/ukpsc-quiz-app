@@ -139,19 +139,17 @@ function BatchSection({ batch, needsRetry, upNext, done, totalCount, doneCount, 
 
   return (
     <section className="mb-8">
-      {/* ── Command strip ── */}
-      <div className="rounded-2xl border border-gray-800 bg-gray-900/60 px-5 py-4 mb-4">
-        <div className="flex items-center gap-3 mb-3">
+        <div className="rounded-2xl border border-gray-800 bg-gray-900/60 px-4 py-3.5 mb-4">
+        <div className="flex items-center gap-2 mb-3">
           <GraduationCap size={15} className="text-purple-400 shrink-0" />
-          <h2 className="text-base font-bold text-white flex-1 min-w-0 truncate">{batch.name}</h2>
+          <h2 className="text-sm sm:text-base font-bold text-white flex-1 min-w-0 truncate">{batch.name}</h2>
           <span className="text-xs bg-purple-500/10 text-purple-400 border border-purple-500/20 px-2 py-0.5 rounded-full font-bold shrink-0">Batch</span>
           <button onClick={() => navigate("/batches")} className="text-xs text-gray-600 hover:text-purple-400 transition shrink-0">
             Details →
           </button>
         </div>
-        {/* Progress bar */}
-        <div className="flex items-center gap-3">
-          <div className="flex-1 h-1.5 bg-gray-800 rounded-full overflow-hidden">
+          <div className="flex items-center gap-2 flex-wrap">
+            <div className="flex-1 min-w-[80px] h-1.5 bg-gray-800 rounded-full overflow-hidden">
             <div
               className={`h-full rounded-full transition-all duration-700 ${pct === 100 ? "bg-emerald-500" : pct >= 60 ? "bg-cyan-500" : "bg-purple-500"}`}
               style={{ width: `${pct}%` }}
@@ -557,7 +555,7 @@ export default function Dashboard() {
   return (
     <div className="min-h-screen bg-gray-950 text-white">
       <Navbar />
-      <div className="max-w-7xl mx-auto px-6 py-6">
+      <div className="max-w-7xl mx-auto px-3 sm:px-6 py-4 sm:py-6 pb-24 sm:pb-6">
 
         {/* ── ANNOUNCEMENTS ── */}
         {[...visibleAnn]

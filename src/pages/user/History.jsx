@@ -168,16 +168,16 @@ export default function History() {
         onClick={() => navigate(`/attempt/${a.id}`)}
         className="group w-full text-left rounded-xl border border-gray-800/80 bg-gray-900/50 hover:bg-gray-800/60 hover:border-gray-700 transition-all duration-150 overflow-hidden"
       >
-        <div className="flex items-center gap-3 px-4 py-3">
+        <div className="flex items-center gap-2.5 sm:gap-3 px-3 sm:px-4 py-3">
           {/* score badge */}
-          <div className={`w-14 h-14 rounded-xl flex flex-col items-center justify-center font-black border shrink-0 ${pctBg} ${pctColor}`}>
-            <span className="text-sm leading-none">{pct}%</span>
-            <span className="text-[10px] opacity-60 mt-0.5">{a.score}/{maxScore}</span>
+          <div className={`w-12 h-12 sm:w-14 sm:h-14 rounded-xl flex flex-col items-center justify-center font-black border shrink-0 ${pctBg} ${pctColor}`}>
+            <span className="text-xs sm:text-sm leading-none">{pct}%</span>
+            <span className="text-[9px] sm:text-[10px] opacity-60 mt-0.5">{a.score}/{maxScore}</span>
           </div>
 
           {/* main info */}
           <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 mb-1 flex-wrap">
+            <div className="flex items-center gap-1.5 mb-1 flex-wrap">
               <p className="text-white font-semibold text-sm truncate">{a.quizTitle || "Quiz"}</p>
 
               {/* attempt badge */}
@@ -191,41 +191,34 @@ export default function History() {
 
               {/* batch / free badge (only in All view) */}
               {activeSection === "all" && a.batchName && (
-                <span className="text-[9px] px-1.5 py-0.5 rounded-full font-semibold bg-purple-500/10 text-purple-400 border border-purple-500/20 flex items-center gap-0.5 shrink-0">
+                <span className="hidden sm:flex text-[9px] px-1.5 py-0.5 rounded-full font-semibold bg-purple-500/10 text-purple-400 border border-purple-500/20 items-center gap-0.5 shrink-0">
                   <GraduationCap size={8} /> {a.batchName}
                 </span>
               )}
               {activeSection === "all" && !a.batchId && (
-                <span className="text-[9px] px-1.5 py-0.5 rounded-full font-semibold bg-gray-800 text-gray-500 border border-gray-700 flex items-center gap-0.5 shrink-0">
+                <span className="hidden sm:flex text-[9px] px-1.5 py-0.5 rounded-full font-semibold bg-gray-800 text-gray-500 border border-gray-700 items-center gap-0.5 shrink-0">
                   <Globe size={8} /> Free
                 </span>
               )}
 
               {/* category + topic */}
               {a.category && (
-                <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-gray-800/80 text-gray-500 border border-gray-700/50 shrink-0">
+                <span className="hidden sm:inline text-[9px] px-1.5 py-0.5 rounded-full bg-gray-800/80 text-gray-500 border border-gray-700/50 shrink-0">
                   {a.category}
-                </span>
-              )}
-              {a.topic && (
-                <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 shrink-0">
-                  📌 {a.topic}
                 </span>
               )}
             </div>
 
             {/* stat row */}
-            <div className="flex items-center gap-3 text-xs text-gray-500">
+            <div className="flex items-center gap-2 sm:gap-3 text-xs text-gray-500 flex-wrap">
               {answers.length > 0 && <>
-                <span className="flex items-center gap-1 text-emerald-600"><CheckCircle size={10}/> {corr}</span>
-                <span className="flex items-center gap-1 text-rose-600"><XCircle size={10}/> {incorr}</span>
+                <span className="flex items-center gap-0.5 sm:gap-1 text-emerald-600"><CheckCircle size={10}/> {corr}</span>
+                <span className="flex items-center gap-0.5 sm:gap-1 text-rose-600"><XCircle size={10}/> {incorr}</span>
               </>}
               {a.streak > 0 && <span className="flex items-center gap-1 text-orange-600"><Flame size={10}/> {a.streak}</span>}
-              <span>{new Date(a.date).toLocaleString()}</span>
+              <span className="text-[10px] sm:text-xs">{new Date(a.date).toLocaleDateString()}</span>
             </div>
           </div>
-
-
 
           <ChevronRight size={13} className="text-gray-700 group-hover:text-gray-400 transition-all shrink-0" />
         </div>
@@ -303,7 +296,7 @@ export default function History() {
   return (
     <div className="min-h-screen bg-gray-950 text-white">
       <Navbar />
-      <div className="max-w-5xl mx-auto px-6 py-6">
+      <div className="max-w-5xl mx-auto px-3 sm:px-6 py-4 sm:py-6 pb-24 sm:pb-6">
 
         {/* ── Header ── */}
         <div className="flex items-center justify-between mb-6">
@@ -365,11 +358,9 @@ export default function History() {
         {attempts.length > 0 && (
           <div className="bg-gray-900/60 border border-gray-800 rounded-2xl p-4 mb-5 space-y-3">
 
-            {/* Single row: Search + all dropdowns + clear */}
-            <div className="flex items-center gap-2 flex-wrap">
-
-              {/* Search */}
-              <div className="relative flex-1 min-w-[180px] max-w-xs">
+          <div className="space-y-2">
+              {/* Search — full width */}
+              <div className="relative">
                 <Search size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-600 pointer-events-none" />
                 <input
                   value={search}
@@ -384,88 +375,91 @@ export default function History() {
                 )}
               </div>
 
-              {/* Subject */}
-              <div className="relative">
-                <select
-                  value={category}
-                  onChange={e => handleCategoryChange(e.target.value)}
-                  className={`appearance-none bg-gray-950 border text-xs rounded-lg pl-3 pr-7 py-2 focus:outline-none cursor-pointer transition ${
-                    category !== "all"
-                      ? "border-cyan-500/40 text-cyan-300 focus:border-cyan-500/60"
-                      : "border-gray-800 text-gray-400 focus:border-gray-600"
-                  }`}
-                >
-                  <option value="all">All Subjects</option>
-                  {categories.map(c => <option key={c} value={c}>{c}</option>)}
-                </select>
-                <ChevronDown size={11} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-600 pointer-events-none" />
-              </div>
-
-              {/* Topic — only when topics exist */}
-              {topics.length > 0 && (
+              {/* Dropdowns — 2-col on mobile, inline on desktop */}
+              <div className="grid grid-cols-2 sm:flex sm:flex-wrap gap-2">
+                {/* Subject */}
                 <div className="relative">
                   <select
-                    value={topic}
-                    onChange={e => setTopic(e.target.value)}
-                    className={`appearance-none bg-gray-950 border text-xs rounded-lg pl-3 pr-7 py-2 focus:outline-none cursor-pointer transition ${
-                      topic !== "all"
-                        ? "border-indigo-500/40 text-indigo-300 focus:border-indigo-500/60"
-                        : "border-indigo-500/20 text-indigo-400 focus:border-indigo-500/40"
+                    value={category}
+                    onChange={e => handleCategoryChange(e.target.value)}
+                    className={`w-full appearance-none bg-gray-950 border text-xs rounded-lg pl-3 pr-7 py-2 focus:outline-none cursor-pointer transition ${
+                      category !== "all"
+                        ? "border-cyan-500/40 text-cyan-300 focus:border-cyan-500/60"
+                        : "border-gray-800 text-gray-400 focus:border-gray-600"
                     }`}
                   >
-                    <option value="all">All Topics</option>
-                    {topics.map(t => <option key={t} value={t}>{t}</option>)}
+                    <option value="all">All Subjects</option>
+                    {categories.map(c => <option key={c} value={c}>{c}</option>)}
                   </select>
-                  <ChevronDown size={11} className="absolute right-2 top-1/2 -translate-y-1/2 text-indigo-500/50 pointer-events-none" />
+                  <ChevronDown size={11} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-600 pointer-events-none" />
                 </div>
-              )}
 
-              {/* Date */}
-              <div className="relative">
-                <select
-                  value={dateFilter}
-                  onChange={e => setDateFilter(e.target.value)}
-                  className={`appearance-none bg-gray-950 border text-xs rounded-lg pl-3 pr-7 py-2 focus:outline-none cursor-pointer transition ${
-                    dateFilter !== "all"
-                      ? "border-violet-500/40 text-violet-300 focus:border-violet-500/60"
-                      : "border-gray-800 text-gray-400 focus:border-gray-600"
-                  }`}
-                >
-                  <option value="all">All Time</option>
-                  <option value="today">Today</option>
-                  <option value="week">This Week</option>
-                  <option value="custom">Date Range</option>
-                </select>
-                <ChevronDown size={11} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-600 pointer-events-none" />
+                {/* Topic — only when topics exist */}
+                {topics.length > 0 && (
+                  <div className="relative">
+                    <select
+                      value={topic}
+                      onChange={e => setTopic(e.target.value)}
+                      className={`w-full appearance-none bg-gray-950 border text-xs rounded-lg pl-3 pr-7 py-2 focus:outline-none cursor-pointer transition ${
+                        topic !== "all"
+                          ? "border-indigo-500/40 text-indigo-300 focus:border-indigo-500/60"
+                          : "border-indigo-500/20 text-indigo-400 focus:border-indigo-500/40"
+                      }`}
+                    >
+                      <option value="all">All Topics</option>
+                      {topics.map(t => <option key={t} value={t}>{t}</option>)}
+                    </select>
+                    <ChevronDown size={11} className="absolute right-2 top-1/2 -translate-y-1/2 text-indigo-500/50 pointer-events-none" />
+                  </div>
+                )}
+
+                {/* Date */}
+                <div className="relative">
+                  <select
+                    value={dateFilter}
+                    onChange={e => setDateFilter(e.target.value)}
+                    className={`w-full appearance-none bg-gray-950 border text-xs rounded-lg pl-3 pr-7 py-2 focus:outline-none cursor-pointer transition ${
+                      dateFilter !== "all"
+                        ? "border-violet-500/40 text-violet-300 focus:border-violet-500/60"
+                        : "border-gray-800 text-gray-400 focus:border-gray-600"
+                    }`}
+                  >
+                    <option value="all">All Time</option>
+                    <option value="today">Today</option>
+                    <option value="week">This Week</option>
+                    <option value="custom">Date Range</option>
+                  </select>
+                  <ChevronDown size={11} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-600 pointer-events-none" />
+                </div>
+
+                {/* Attempt type */}
+                <div className="relative">
+                  <select
+                    value={statusFilter}
+                    onChange={e => setStatusFilter(e.target.value)}
+                    className={`w-full appearance-none bg-gray-950 border text-xs rounded-lg pl-3 pr-7 py-2 focus:outline-none cursor-pointer transition ${
+                      statusFilter !== "all"
+                        ? "border-amber-500/40 text-amber-300 focus:border-amber-500/60"
+                        : "border-gray-800 text-gray-400 focus:border-gray-600"
+                    }`}
+                  >
+                    <option value="all">All Attempts</option>
+                    <option value="first">1st Attempts Only</option>
+                  </select>
+                  <ChevronDown size={11} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-600 pointer-events-none" />
+                </div>
+
+                {/* Clear all */}
+                {hasActiveFilters && (
+                  <button
+                    onClick={clearFilters}
+                    className="col-span-2 sm:col-span-1 flex items-center justify-center gap-1 text-xs text-gray-500 hover:text-rose-400 border border-gray-800 hover:border-rose-500/30 px-2.5 py-2 rounded-lg transition"
+                  >
+                    <X size={11} /> Clear filters
+                  </button>
+                )}
               </div>
-
-              {/* Attempt type */}
-              <div className="relative">
-                <select
-                  value={statusFilter}
-                  onChange={e => setStatusFilter(e.target.value)}
-                  className={`appearance-none bg-gray-950 border text-xs rounded-lg pl-3 pr-7 py-2 focus:outline-none cursor-pointer transition ${
-                    statusFilter !== "all"
-                      ? "border-amber-500/40 text-amber-300 focus:border-amber-500/60"
-                      : "border-gray-800 text-gray-400 focus:border-gray-600"
-                  }`}
-                >
-                  <option value="all">All Attempts</option>
-                  <option value="first">1st Attempts Only</option>
-                </select>
-                <ChevronDown size={11} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-600 pointer-events-none" />
-              </div>
-
-              {/* Clear all */}
-              {hasActiveFilters && (
-                <button
-                  onClick={clearFilters}
-                  className="flex items-center gap-1 text-xs text-gray-500 hover:text-rose-400 border border-gray-800 hover:border-rose-500/30 px-2.5 py-2 rounded-lg transition"
-                >
-                  <X size={11} /> Clear
-                </button>
-              )}
-            </div>
+          </div>
 
             {/* Custom date range inputs — shown below when "Date Range" selected */}
             {dateFilter === "custom" && (

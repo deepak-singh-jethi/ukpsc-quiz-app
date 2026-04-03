@@ -9,6 +9,17 @@ import { ChevronRight, ChevronLeft, Flag, RotateCcw, Send } from "lucide-react"
 import { useQuiz } from "../../hooks/useQuiz"
 import { writeLeaderboardEntry, getLeaderboardKey } from "../../firebase/leaderboardService"
 import { invalidateCache, cachedGetDoc, TTL_LONG } from "../../firebase/firestoreCache"
+import QuizMobile from "./QuizMobile"
+
+function useIsMobile() {
+  const [isMobile, setIsMobile] = useState(() => window.innerWidth < 640)
+  useEffect(() => {
+    const handler = () => setIsMobile(window.innerWidth < 640)
+    window.addEventListener("resize", handler)
+    return () => window.removeEventListener("resize", handler)
+  }, [])
+  return isMobile
+}
 
 function formatTime(seconds) {
   const h = Math.floor(seconds / 3600)
@@ -119,6 +130,8 @@ function Engine({ quiz, questions, onFinish, wrongOnly = false, bookmarkMode = f
   const marksPerQ     = quiz.marksPerQ    || 1
   const negativeMark  = quiz.negativeMark || 0
 
+  const isMobile = useIsMobile()
+
   //  Fix #2: sessionStorage draft key  -  unique per quiz 
   // On every answer change and timer tick we persist state so the student
   // can refresh the page without losing their work.
@@ -144,7 +157,7 @@ function Engine({ quiz, questions, onFinish, wrongOnly = false, bookmarkMode = f
 
   const [timeLeft,    setTimeLeft]    = useState(draft?.timeLeft ?? totalSeconds)
   const [current,     setCurrent]     = useState(draft?.current  ?? 0)
-  const [sidebarOpen, setSidebarOpen] = useState(true)
+  const [sidebarOpen, setSidebarOpen] = useState(() => window.innerWidth >= 640)
   const [qStates,     setQStates]     = useState(
     draft?.qStates ?? questions.map(() => ({ selected: null, marked: false }))
   )
@@ -323,6 +336,36 @@ function Engine({ quiz, questions, onFinish, wrongOnly = false, bookmarkMode = f
   const marked       = qStates.filter(s => s.marked).length
   const notVisited   = qStates.filter((s, i) => i > current && s.selected === null && !s.marked).length
 
+  // ── Mobile: render dedicated mobile component ─────────────────────────────
+  if (isMobile) {
+    return (
+      <QuizMobile
+        quiz={quiz}
+        questions={questions}
+        current={current}
+        setCurrent={setCurrent}
+        qStates={qStates}
+        timeLeft={timeLeft}
+        isLowTime={isLowTime}
+        wrongOnly={wrongOnly}
+        bookmarkMode={bookmarkMode}
+        hiddenBanner={hiddenBanner}
+        tabSwitches={tabSwitches}
+        submitWarning={submitWarning}
+        setSubmitWarning={setSubmitWarning}
+        marksPerQ={marksPerQ}
+        negativeMark={negativeMark}
+        selectOption={selectOption}
+        clearResponse={clearResponse}
+        toggleMark={toggleMark}
+        saveAndNext={saveAndNext}
+        confirmSubmit={confirmSubmit}
+        handleSubmit={handleSubmit}
+        getStatus={getStatus}
+      />
+    )
+  }
+
   return (
     <div className="h-screen bg-gray-950 text-white flex flex-col overflow-hidden">
       {/* Fix #1: Tab-hidden warning banner */}
@@ -335,7 +378,7 @@ function Engine({ quiz, questions, onFinish, wrongOnly = false, bookmarkMode = f
       )}
 
       {/* Top bar */}
-      <div className="bg-gray-900 border-b border-gray-800 px-6 py-3 flex items-center justify-between shrink-0">
+      <div className="bg-gray-900 border-b border-gray-800 px-3 sm:px-6 py-3 flex items-center justify-between shrink-0">
         <div className="flex items-center gap-3 min-w-0">
           <h1 className="font-bold text-white truncate text-sm">{quiz.title}</h1>
           {wrongOnly && (
@@ -410,7 +453,7 @@ function Engine({ quiz, questions, onFinish, wrongOnly = false, bookmarkMode = f
       <div className="flex flex-1 overflow-hidden">
         {/* Question area */}
         <div className="flex-1 flex flex-col overflow-hidden">
-          <div className="bg-gray-900/50 border-b border-gray-800 px-6 py-3 flex items-center justify-between shrink-0">
+          <div className="bg-gray-900/50 border-b border-gray-800 px-3 sm:px-6 py-3 flex items-center justify-between shrink-0">
             <div className="flex items-center gap-4 text-xs text-gray-500">
               <span className="font-semibold text-white">Question No. {current + 1}</span>
               <span className="bg-green-500/10 text-green-400 border border-green-500/20 px-2 py-0.5 rounded font-bold">
@@ -424,7 +467,7 @@ function Engine({ quiz, questions, onFinish, wrongOnly = false, bookmarkMode = f
             </div>
           </div>
 
-          <div className="flex-1 overflow-y-auto px-6 py-6">
+          <div className="flex-1 overflow-y-auto px-3 sm:px-6 py-4 sm:py-6">
             {/* Smart question renderer  -  handles all 4 question types */}
             {(() => {
               const text = q.question || ""
@@ -526,7 +569,7 @@ function Engine({ quiz, questions, onFinish, wrongOnly = false, bookmarkMode = f
             </div>
           </div>
 
-          <div className="bg-gray-900 border-t border-gray-800 px-6 py-3 flex items-center justify-between shrink-0">
+          <div className="bg-gray-900 border-t border-gray-800 px-3 sm:px-6 py-3 flex items-center justify-between shrink-0">
             <div className="flex items-center gap-2">
               <button onClick={toggleMark}
                 className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium border transition ${

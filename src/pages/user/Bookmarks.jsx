@@ -84,11 +84,11 @@ export default function Bookmarks() {
   return (
     <div className="min-h-screen bg-gray-950 text-white">
       <Navbar />
-      <div className="max-w-7xl mx-auto px-6 py-6">
+      <div className="max-w-7xl mx-auto px-3 sm:px-6 py-4 sm:py-6 pb-24 sm:pb-6">
 
         {/* Header */}
         <div
-          className="flex items-center justify-between mb-6"
+          className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6"
           style={{ opacity: 1, transition: "opacity 0.3s ease" }}
         >
           <div>

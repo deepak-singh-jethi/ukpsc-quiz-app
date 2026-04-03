@@ -216,11 +216,10 @@ export default function AttemptReview() {
   return (
     <div className="min-h-screen bg-gray-950 text-white">
       <Navbar />
-      <div className="max-w-7xl mx-auto px-6 py-4">
+      <div className="max-w-7xl mx-auto px-3 sm:px-6 py-3 sm:py-4 pb-24 sm:pb-4">
 
-        {/* HEADER */}
-        <div className="rounded-2xl border border-gray-800 bg-gray-900/50 px-5 py-3 mb-4">
-          <div className="flex items-center gap-3">
+        <div className="rounded-2xl border border-gray-800 bg-gray-900/50 px-3 sm:px-5 py-3 mb-4">
+          <div className="flex items-center gap-2 sm:gap-3">
 
             {/* Back */}
             <button onClick={() => navigate(-1)}
@@ -230,7 +229,7 @@ export default function AttemptReview() {
 
             {/* Title + meta - centered */}
             <div className="flex-1 min-w-0 text-center">
-              <div className="flex items-center justify-center gap-2 mb-0.5">
+              <div className="flex items-center justify-center gap-1.5 sm:gap-2 mb-0.5 flex-wrap">
                 <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold border ${
                   isFirst
                     ? "bg-cyan-500/10 text-cyan-400 border-cyan-500/20"
@@ -238,27 +237,26 @@ export default function AttemptReview() {
                 }`}>
                   {isFirst ? "1st Attempt" : `Retry #${(attemptNumber ?? 2) - 1}`}
                 </span>
-                <span className="text-gray-600 text-[11px]">{new Date(date).toLocaleDateString("en-IN", { day:"numeric", month:"short", year:"numeric" })}</span>
+                <span className="text-gray-600 text-[11px] hidden sm:inline">{new Date(date).toLocaleDateString("en-IN", { day:"numeric", month:"short", year:"numeric" })}</span>
               </div>
-              <h1 className="text-base font-black text-white tracking-tight leading-tight truncate">{quizTitle || "Quiz"}</h1>
+              <h1 className="text-sm sm:text-base font-black text-white tracking-tight leading-tight truncate">{quizTitle || "Quiz"}</h1>
             </div>
 
             {/* Score + retry */}
-            <div className="flex items-center gap-3 shrink-0">
+            <div className="flex items-center gap-2 sm:gap-3 shrink-0">
               <div className="text-right">
-                <p className={`text-2xl font-black leading-none ${pctColor}`}>
+                <p className={`text-xl sm:text-2xl font-black leading-none ${pctColor}`}>
                   {Number.isInteger(totalMarks) ? totalMarks : Number(totalMarks.toFixed(2))}
-                  <span className="text-sm font-semibold text-gray-600">/{maxMarks}</span>
+                  <span className="text-xs sm:text-sm font-semibold text-gray-600">/{maxMarks}</span>
                 </p>
                 <p className="text-[10px] text-gray-600">marks</p>
               </div>
               <button
                 onClick={() => navigate(`/quiz/${attempt.quizId}${attempt.batchId ? `?batchId=${attempt.batchId}` : ""}`)}
-                className="flex items-center gap-1.5 bg-cyan-500 hover:bg-cyan-400 text-gray-900 font-bold px-4 py-2.5 rounded-xl text-sm transition group">
+                className="flex items-center gap-1.5 bg-cyan-500 hover:bg-cyan-400 text-gray-900 font-bold px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl text-sm transition group">
                 <RotateCcw size={13} className="group-hover:rotate-180 transition-transform duration-500" />
-                Retry
+                <span className="hidden sm:inline">Retry</span>
               </button>
-
             </div>
           </div>
         </div>
@@ -350,7 +348,7 @@ export default function AttemptReview() {
             })()}
 
             {/*  FILTER TABS + Reattempt toggle  */}
-            <div className="flex items-center gap-2">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-2">
               <div className="flex flex-1 gap-2">
               {TABS.map(t => {
                 const Icon   = t.icon
@@ -358,14 +356,14 @@ export default function AttemptReview() {
                 return (
                   <button key={t.id}
                     onClick={() => setActiveTab(t.id)}
-                    className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold border transition-all ${
+                    className={`flex-1 flex items-center justify-center gap-1.5 sm:gap-2 px-2 sm:px-4 py-2 sm:py-2.5 rounded-xl text-xs sm:text-sm font-bold border transition-all ${
                       active
                         ? `${t.activeBg} ${t.color} ${t.activeBorder} shadow-sm`
                         : "border-gray-800 text-gray-500 hover:text-gray-300 bg-gray-900/60 hover:border-gray-700"
                     }`}>
-                    <Icon size={14} />
-                    {t.label}
-                    <span className={`text-sm font-black px-1.5 py-0.5 rounded-md ${active ? "bg-black/20" : "text-gray-700"}`}>
+                    <Icon size={13} />
+                    <span className="hidden xs:inline sm:inline">{t.label}</span>
+                    <span className={`text-xs sm:text-sm font-black px-1 sm:px-1.5 py-0.5 rounded-md ${active ? "bg-black/20" : "text-gray-700"}`}>
                       {t.count}
                     </span>
                   </button>
@@ -376,7 +374,7 @@ export default function AttemptReview() {
               <button
                 onClick={() => { setRetestMode(m => !m); setRetestAnswers({}) }}
                 title={retestMode ? "Exit reattempt mode" : "Reattempt questions without seeing answers"}
-                className="flex items-center gap-2.5 shrink-0 pl-3 pr-2.5 py-2 rounded-xl border transition-all duration-200"
+                className="flex items-center justify-center gap-2.5 shrink-0 pl-3 pr-2.5 py-2 rounded-xl border transition-all duration-200"
                 style={{
                   background:   retestMode ? "rgba(245,158,11,0.12)" : "rgba(255,255,255,0.03)",
                   borderColor:  retestMode ? "rgba(245,158,11,0.35)" : "rgba(255,255,255,0.08)",
@@ -467,17 +465,17 @@ export default function AttemptReview() {
                   </div>
 
                   {/* Nav + card wrapper - buttons float left/right aligned to top of card */}
-                  <div className="relative">
+                  <div className="relative sm:mx-5">
                     <button
                       onClick={() => setActiveIdx(i => Math.max(0, i - 1))}
                       disabled={safeIdx === 0}
-                      className="absolute -left-5 top-3 z-10 w-9 h-9 rounded-xl border border-gray-700 bg-gray-900 flex items-center justify-center text-gray-400 hover:text-white hover:border-gray-500 hover:bg-gray-800 disabled:opacity-20 disabled:cursor-not-allowed transition">
+                      className="hidden sm:flex absolute -left-5 top-3 z-10 w-9 h-9 rounded-xl border border-gray-700 bg-gray-900 items-center justify-center text-gray-400 hover:text-white hover:border-gray-500 hover:bg-gray-800 disabled:opacity-20 disabled:cursor-not-allowed transition">
                       <ChevronLeft size={18} />
                     </button>
                     <button
                       onClick={() => setActiveIdx(i => Math.min(tabAnswers.length - 1, i + 1))}
                       disabled={safeIdx === tabAnswers.length - 1}
-                      className="absolute -right-5 top-3 z-10 w-9 h-9 rounded-xl border border-gray-700 bg-gray-900 flex items-center justify-center text-gray-400 hover:text-white hover:border-gray-500 hover:bg-gray-800 disabled:opacity-20 disabled:cursor-not-allowed transition">
+                      className="hidden sm:flex absolute -right-5 top-3 z-10 w-9 h-9 rounded-xl border border-gray-700 bg-gray-900 items-center justify-center text-gray-400 hover:text-white hover:border-gray-500 hover:bg-gray-800 disabled:opacity-20 disabled:cursor-not-allowed transition">
                       <ChevronRight size={18} />
                     </button>
 
@@ -682,6 +680,22 @@ export default function AttemptReview() {
                           </div>
                         )}
                       </div>
+                  </div>
+                  {/* Mobile inline prev/next — only visible on small screens */}
+                  <div className="flex sm:hidden items-center justify-between mt-2 gap-2">
+                    <button
+                      onClick={() => setActiveIdx(i => Math.max(0, i - 1))}
+                      disabled={safeIdx === 0}
+                      className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl border border-gray-800 bg-gray-900/60 text-gray-400 text-xs font-semibold disabled:opacity-25 disabled:cursor-not-allowed transition active:bg-gray-800">
+                      <ChevronLeft size={14} /> Prev
+                    </button>
+                    <span className="text-xs text-gray-600 tabular-nums shrink-0">{safeIdx + 1} / {tabAnswers.length}</span>
+                    <button
+                      onClick={() => setActiveIdx(i => Math.min(tabAnswers.length - 1, i + 1))}
+                      disabled={safeIdx === tabAnswers.length - 1}
+                      className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl border border-gray-800 bg-gray-900/60 text-gray-400 text-xs font-semibold disabled:opacity-25 disabled:cursor-not-allowed transition active:bg-gray-800">
+                      Next <ChevronRight size={14} />
+                    </button>
                   </div>
                   </div>
                 </>
