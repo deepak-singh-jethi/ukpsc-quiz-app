@@ -980,9 +980,16 @@ export default function Batches() {
   const currentUserName = userProfile?.name || userProfile?.email || currentUser?.email || "Student"
 
   useEffect(() => {
+    // Wait until userProfile has resolved from AuthContext.
+    // On first render userProfile is null (onSnapshot in-flight) — running
+    // load() then would silently skip all batch fetching and show an empty
+    // page, then re-run when userProfile arrives causing a double-fetch.
+    if (!currentUser) return
+    if (!userProfile) return   // ← KEY FIX: wait for profile before loading
+
     async function load() {
       try {
-        const userBatchIds = userProfile?.batchIds || []
+        const userBatchIds = userProfile.batchIds || []
         const now2 = new Date()
 
         //  Step 1: 3 parallel fetches, all cached 
