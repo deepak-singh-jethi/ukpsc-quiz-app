@@ -1,374 +1,538 @@
-import { useEffect, useState } from "react"
+import { useEffect, useState, useMemo, useCallback } from "react"
 import { useNavigate } from "react-router-dom"
 import { useAuth } from "../../context/AuthContext"
 import { db } from "../../firebase/config"
 import { collection, query, where } from "firebase/firestore"
 import { cachedGetDocs, TTL_LONG, TTL_SHORT } from "../../firebase/firestoreCache"
 import Navbar from "../../components/Navbar"
-import QuizCard from "../../components/QuizCard"
 import {
-  Search, X, Trophy,
-  GraduationCap, BookOpen, Globe,
-  AlertTriangle, ChevronRight, ChevronDown, Zap, CheckCircle2, RotateCcw
+  Search, X, AlertTriangle, ChevronRight, ChevronDown,
+  RotateCcw, CheckCircle2, GraduationCap, Globe, Trophy,
+  BookOpen, Zap, Clock, CalendarDays
 } from "lucide-react"
 
-function isNew(quiz) {
-  if (!quiz.createdAt) return false
-  return (new Date() - new Date(quiz.createdAt)) < 7 * 24 * 60 * 60 * 1000
+// ─────────────────────────────────────────────────────────────────────────────
+// UTILS
+// ─────────────────────────────────────────────────────────────────────────────
+
+function isPublished(q) {
+  if (q.status === "published") return true
+  if (q.status === "scheduled" && q.publishAt && new Date(q.publishAt) <= new Date()) return true
+  return false
 }
 
-// ── Skeleton components ─────────────────────────────────────────────────────
+function scoreColor(s) {
+  if (s >= 80) return "text-emerald-400"
+  if (s >= 60) return "text-amber-400"
+  return "text-rose-400"
+}
+
+function scoreBadge(s) {
+  if (s >= 80) return "bg-emerald-500/10 text-emerald-400 border border-emerald-500/25"
+  if (s >= 60) return "bg-amber-500/10 text-amber-400 border border-amber-500/25"
+  return "bg-rose-500/10 text-rose-400 border border-rose-500/25"
+}
+
+function timeAgo(dateVal) {
+  if (!dateVal) return null
+  const d = dateVal?.toDate ? dateVal.toDate() : new Date(dateVal)
+  if (isNaN(d)) return null
+  const diff = (Date.now() - d) / 1000
+  if (diff < 3600)   return `${Math.floor(diff / 60)}m ago`
+  if (diff < 86400)  return `${Math.floor(diff / 3600)}h ago`
+  if (diff < 604800) return `${Math.floor(diff / 86400)}d ago`
+  return d.toLocaleDateString("en-IN", { day: "numeric", month: "short" })
+}
+
+function addedAgo(dateVal) {
+  if (!dateVal) return null
+  const d = dateVal?.toDate ? dateVal.toDate() : new Date(dateVal)
+  if (isNaN(d)) return null
+  const diff = (Date.now() - d) / 1000
+  if (diff < 86400)  return "Added today"
+  if (diff < 172800) return "Added yesterday"
+  if (diff < 604800) return `Added ${Math.floor(diff / 86400)}d ago`
+  return `Added ${d.toLocaleDateString("en-IN", { day: "numeric", month: "short" })}`
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SKELETON
+// ─────────────────────────────────────────────────────────────────────────────
+
 function SkeletonCard() {
   return (
-    <div className="bg-gray-900 border border-gray-800 rounded-2xl p-5 animate-pulse">
-      <div className="flex items-start justify-between mb-4">
-        <div className="w-10 h-10 bg-gray-800 rounded-xl" />
-        <div className="w-16 h-5 bg-gray-800 rounded-full" />
-      </div>
-      <div className="h-4 bg-gray-800 rounded w-3/4 mb-2" />
-      <div className="h-3 bg-gray-800 rounded w-1/2 mb-4" />
-      <div className="h-3 bg-gray-800 rounded w-full" />
-    </div>
-  )
-}
-
-function SkeletonSection({ count = 4 }) {
-  return (
-    <section className="mb-10">
-      <div className="flex items-center gap-2 mb-4">
-        <div className="w-4 h-4 bg-gray-800 rounded animate-pulse" />
-        <div className="h-4 w-32 bg-gray-800 rounded animate-pulse" />
-        <div className="h-4 w-8 bg-gray-800 rounded-full animate-pulse" />
-      </div>
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-        {Array.from({ length: count }).map((_, i) => <SkeletonCard key={i} />)}
-      </div>
-    </section>
-  )
-}
-
-// ── Score ring SVG ────────────────────────────────────────────────────────────
-function ScoreRing({ score, size = 36 }) {
-  const r = 14, cx = 18, cy = 18
-  const circ = 2 * Math.PI * r
-  const dash  = ((score || 0) / 100) * circ
-  const color = score >= 80 ? "#34d399" : score >= 60 ? "#fbbf24" : "#f87171"
-  return (
-    <svg width={size} height={size} viewBox="0 0 36 36" className="shrink-0">
-      <circle cx={cx} cy={cy} r={r} fill="none" stroke="#1f2937" strokeWidth="3" />
-      <circle cx={cx} cy={cy} r={r} fill="none" stroke={color} strokeWidth="3"
-        strokeDasharray={`${dash} ${circ}`} strokeLinecap="round"
-        transform="rotate(-90 18 18)" />
-      <text x="18" y="22" textAnchor="middle" fontSize="8" fontWeight="800" fill={color}>{score}%</text>
-    </svg>
-  )
-}
-
-// ── Compact row for "Up Next" quizzes ─────────────────────────────────────────
-function QuizRow({ quiz, batchId, navigate }) {
-  const DIFF = { easy: "text-green-400", medium: "text-yellow-400", hard: "text-red-400" }
-  return (
-    <div
-      onClick={() => navigate(`/quiz/${quiz.id}/detail${batchId ? `?batchId=${batchId}` : ""}`)}
-      className="flex items-center gap-3 px-4 py-3 rounded-xl border border-gray-800/60 bg-gray-900/40 hover:border-cyan-500/30 hover:bg-gray-900/80 cursor-pointer transition-all group"
-    >
-      <div className="w-7 h-7 rounded-lg bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center shrink-0">
-        <BookOpen size={13} className="text-cyan-400" />
-      </div>
-      <div className="flex-1 min-w-0">
-        <p className="text-sm font-semibold text-white truncate group-hover:text-cyan-400 transition-colors">{quiz.title}</p>
-        <p className="text-[11px] text-gray-600 mt-0.5">
-          {quiz.questionCount || 0}Q · {quiz.totalTime || 10}m
-          {quiz.negativeMark > 0 && <span className="text-red-600 ml-1.5">-{quiz.negativeMark}</span>}
-        </p>
-      </div>
-      <span className={`text-[10px] font-bold capitalize shrink-0 ${DIFF[quiz.difficulty] || DIFF.medium}`}>
-        {quiz.difficulty || "medium"}
-      </span>
-      <span className="text-cyan-400 text-xs font-semibold flex items-center gap-0.5 shrink-0 group-hover:gap-1.5 transition-all">
-        Start <ChevronRight size={12} />
-      </span>
-    </div>
-  )
-}
-
-// ── Compact row for "Done" quizzes ────────────────────────────────────────────
-function DoneRow({ quiz, bestScore, attemptCount, rank, batchId, navigate }) {
-  return (
-    <div
-      onClick={() => navigate(`/quiz/${quiz.id}/detail${batchId ? `?batchId=${batchId}` : ""}`)}
-      className="flex items-center gap-3 px-4 py-2.5 rounded-xl border border-gray-800/40 bg-gray-900/20 hover:border-gray-700 hover:bg-gray-900/60 cursor-pointer transition-all group"
-    >
-      <ScoreRing score={bestScore} size={32} />
-      <div className="flex-1 min-w-0">
-        <p className="text-sm text-gray-300 truncate group-hover:text-white transition-colors">{quiz.title}</p>
-        <p className="text-[11px] text-gray-600 mt-0.5">{attemptCount} {attemptCount === 1 ? "attempt" : "attempts"}{rank ? ` · #${rank} rank` : ""}</p>
-      </div>
-      <span className="text-gray-600 text-xs flex items-center gap-0.5 shrink-0 group-hover:text-gray-400 transition-all">
-        View <ChevronRight size={12} />
-      </span>
-    </div>
-  )
-}
-
-// ── Needs Retry card ──────────────────────────────────────────────────────────
-function RetryRow({ quiz, bestScore, attemptCount, batchId, navigate }) {
-  return (
-    <div
-      onClick={() => navigate(`/quiz/${quiz.id}/detail${batchId ? `?batchId=${batchId}` : ""}`)}
-      className="flex items-center gap-3 px-4 py-3 rounded-xl border border-amber-500/20 bg-amber-500/5 hover:border-amber-500/40 hover:bg-amber-500/8 cursor-pointer transition-all group"
-    >
-      <ScoreRing score={bestScore} size={34} />
-      <div className="flex-1 min-w-0">
-        <p className="text-sm font-semibold text-white truncate">{quiz.title}</p>
-        <p className="text-[11px] text-amber-400/60 mt-0.5">{attemptCount} {attemptCount === 1 ? "attempt" : "attempts"} · needs improvement</p>
-      </div>
-      <span className="text-amber-400 text-xs font-semibold flex items-center gap-0.5 shrink-0 group-hover:gap-1.5 transition-all">
-        <RotateCcw size={11} /> Retry
-      </span>
-    </div>
-  )
-}
-
-// ── BatchSection ──────────────────────────────────────────────────────────────
-function BatchSection({ batch, needsRetry, upNext, done, totalCount, doneCount, pct, avgScore, hasFilters, navigate }) {
-  const [doneOpen, setDoneOpen] = useState(false)
-  const DONE_PREVIEW = 4
-
-  if (totalCount === 0 && hasFilters) return null
-
-  return (
-    <section className="mb-8">
-        <div className="rounded-2xl border border-gray-800 bg-gray-900/60 px-4 py-3.5 mb-4">
-        <div className="flex items-center gap-2 mb-3">
-          <GraduationCap size={15} className="text-purple-400 shrink-0" />
-          <h2 className="text-sm sm:text-base font-bold text-white flex-1 min-w-0 truncate">{batch.name}</h2>
-          <span className="text-xs bg-purple-500/10 text-purple-400 border border-purple-500/20 px-2 py-0.5 rounded-full font-bold shrink-0">Batch</span>
-          <button onClick={() => navigate("/batches")} className="text-xs text-gray-600 hover:text-purple-400 transition shrink-0">
-            Details →
-          </button>
+    <div className="bg-gray-900 border border-gray-800 rounded-2xl p-4 space-y-3 animate-pulse">
+      <div className="flex items-center gap-3">
+        <div className="w-8 h-8 rounded-lg bg-gray-800" />
+        <div className="flex-1 space-y-1.5">
+          <div className="h-3 bg-gray-800 rounded w-40" />
+          <div className="h-2.5 bg-gray-800 rounded w-20" />
         </div>
-          <div className="flex items-center gap-2 flex-wrap">
-            <div className="flex-1 min-w-[80px] h-1.5 bg-gray-800 rounded-full overflow-hidden">
-            <div
-              className={`h-full rounded-full transition-all duration-700 ${pct === 100 ? "bg-emerald-500" : pct >= 60 ? "bg-cyan-500" : "bg-purple-500"}`}
-              style={{ width: `${pct}%` }}
-            />
+      </div>
+      <div className="h-1 bg-gray-800 rounded-full" />
+      {[1, 2, 3].map(i => (
+        <div key={i} className="flex items-center gap-3">
+          <div className="w-1.5 h-1.5 rounded-full bg-gray-800" />
+          <div className="h-3 bg-gray-800 rounded flex-1" />
+          <div className="h-3 bg-gray-800 rounded w-10" />
+        </div>
+      ))}
+    </div>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// HERO PANEL (left sidebar on desktop, top card on mobile)
+// ─────────────────────────────────────────────────────────────────────────────
+
+function HeroPanel({ currentUser, totalAttempted, avgScore, needsRetryCount, streakDays, batchSections, navigate }) {
+  const initial = (currentUser?.displayName?.charAt(0) || currentUser?.email?.charAt(0) || "U").toUpperCase()
+  const firstName = currentUser?.displayName?.split(" ")[0] || currentUser?.email?.split("@")[0] || "Student"
+
+  return (
+    <div className="space-y-3">
+      {/* Profile card */}
+      <div className="bg-gray-900 border border-gray-800 rounded-2xl p-4">
+        <div className="flex items-center gap-3 mb-4">
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-cyan-500 to-teal-600 flex items-center justify-center shrink-0">
+            <span className="text-sm font-bold text-white">{initial}</span>
           </div>
-          <span className="text-xs text-gray-500 shrink-0 tabular-nums">{doneCount}/{totalCount} done</span>
-          {avgScore !== null && (
-            <span className={`text-xs font-bold shrink-0 tabular-nums ${avgScore >= 80 ? "text-emerald-400" : avgScore >= 60 ? "text-amber-400" : "text-rose-400"}`}>
-              avg {avgScore}%
-            </span>
-          )}
-          {needsRetry.length > 0 && (
-            <span className="text-xs font-bold text-amber-400 flex items-center gap-1 shrink-0">
-              <AlertTriangle size={11} /> {needsRetry.length} need retry
-            </span>
-          )}
+          <div className="min-w-0">
+            <h1 className="text-sm font-semibold text-white truncate">नमस्ते, {firstName} 👋</h1>
+            <p className="text-[11px] text-gray-600 mt-0.5">UKPSC / UKSSSC Prep</p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-3 gap-2">
+          <div className="bg-gray-800/60 rounded-xl p-2.5 text-center">
+            <div className="text-lg font-semibold text-cyan-400 tabular-nums">{totalAttempted}</div>
+            <div className="text-[10px] text-gray-600 mt-0.5 leading-tight">Attempted</div>
+          </div>
+          <div className="bg-gray-800/60 rounded-xl p-2.5 text-center">
+            <div className={`text-lg font-semibold tabular-nums ${avgScore !== null ? scoreColor(avgScore) : "text-gray-700"}`}>
+              {avgScore !== null ? `${avgScore}%` : "—"}
+            </div>
+            <div className="text-[10px] text-gray-600 mt-0.5 leading-tight">Avg score</div>
+          </div>
+          <div className="bg-gray-800/60 rounded-xl p-2.5 text-center">
+            <div className={`text-lg font-semibold tabular-nums ${needsRetryCount > 0 ? "text-amber-400" : "text-gray-700"}`}>
+              {needsRetryCount}
+            </div>
+            <div className="text-[10px] text-gray-600 mt-0.5 leading-tight">Retry</div>
+          </div>
+        </div>
+
+        {/* Streak */}
+        <div className="mt-3 pt-3 border-t border-gray-800/80">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-[10px] text-gray-600 uppercase tracking-wider">This week</span>
+            <span className="text-[10px] text-gray-600">{streakDays}d streak</span>
+          </div>
+          <div className="flex gap-1">
+            {["S","M","T","W","T","F","S"].map((d, i) => (
+              <div key={i} className="flex-1 flex flex-col items-center gap-1">
+                <div className={`w-full h-1.5 rounded-full ${
+                  i < streakDays
+                    ? i === streakDays - 1
+                      ? "bg-cyan-400 ring-1 ring-cyan-400/40 ring-offset-1 ring-offset-gray-900"
+                      : "bg-cyan-500/60"
+                    : "bg-gray-800"
+                }`} />
+                <span className="text-[9px] text-gray-700">{d}</span>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
 
-      {totalCount === 0 ? (
-        <div className="border border-dashed border-gray-800 rounded-2xl p-8 text-center">
-          <p className="text-gray-600 text-sm">No quizzes assigned yet.</p>
-        </div>
-      ) : (
-        <div className="space-y-5">
-
-          {/* ── ① Needs Attention ── */}
-          {needsRetry.length > 0 && (
-            <div>
-              <div className="flex items-center gap-2 mb-2.5">
-                <AlertTriangle size={12} className="text-amber-400" />
-                <span className="text-xs font-black uppercase tracking-widest text-amber-400/80">Needs Attention</span>
-                <span className="text-[10px] text-amber-400/40 font-bold bg-amber-500/10 border border-amber-500/15 px-1.5 py-0.5 rounded-full">{needsRetry.length}</span>
-              </div>
-              <div className="space-y-1.5">
-                {needsRetry.map(({ quiz, bestScore, attemptCount }) => (
-                  <RetryRow key={quiz.id} quiz={quiz} bestScore={bestScore} attemptCount={attemptCount} batchId={batch.id} navigate={navigate} />
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* ── ② Up Next ── */}
-          {upNext.length > 0 && (
-            <div>
-              <div className="flex items-center gap-2 mb-2.5">
-                <Zap size={12} className="text-cyan-400" />
-                <span className="text-xs font-black uppercase tracking-widest text-cyan-400/80">Up Next</span>
-                <span className="text-[10px] text-cyan-400/40 font-bold bg-cyan-500/10 border border-cyan-500/15 px-1.5 py-0.5 rounded-full">{upNext.length}</span>
-              </div>
-              <div className="space-y-1.5">
-                {upNext.map(({ quiz }) => (
-                  <QuizRow key={quiz.id} quiz={quiz} batchId={batch.id} navigate={navigate} />
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* ── ③ Completed ── */}
-          {done.length > 0 && (
-            <div>
-              <div className="flex items-center gap-2 mb-2.5">
-                <CheckCircle2 size={12} className="text-gray-500" />
-                <span className="text-xs font-black uppercase tracking-widest text-gray-600">Completed</span>
-                <span className="text-[10px] text-gray-600 font-bold bg-gray-800 border border-gray-700/50 px-1.5 py-0.5 rounded-full">{done.length}</span>
-              </div>
-              <div className="space-y-1.5">
-                {(doneOpen ? done : done.slice(0, DONE_PREVIEW)).map(({ quiz, bestScore, attemptCount, rank }) => (
-                  <DoneRow key={quiz.id} quiz={quiz} bestScore={bestScore} attemptCount={attemptCount} rank={rank} batchId={batch.id} navigate={navigate} />
-                ))}
-              </div>
-              {done.length > DONE_PREVIEW && (
-                <button
-                  onClick={() => setDoneOpen(o => !o)}
-                  className="mt-2 w-full flex items-center justify-center gap-1.5 py-2 rounded-xl border border-gray-800/60 text-xs text-gray-600 hover:text-gray-400 hover:border-gray-700 transition">
-                  <ChevronDown size={12} className={`transition-transform ${doneOpen ? "rotate-180" : ""}`} />
-                  {doneOpen ? "Show less" : `Show ${done.length - DONE_PREVIEW} more completed`}
-                </button>
-              )}
-            </div>
-          )}
-
-          {/* All done — celebration state */}
-          {upNext.length === 0 && needsRetry.length === 0 && done.length > 0 && (
-            <div className="flex items-center gap-2 px-4 py-3 rounded-xl bg-emerald-500/5 border border-emerald-500/15">
-              <Trophy size={14} className="text-emerald-400 shrink-0" />
-              <p className="text-sm text-emerald-400/80 font-medium">All quizzes completed with good scores!</p>
-            </div>
-          )}
+      {/* Batch progress (sidebar) */}
+      {batchSections.length > 0 && (
+        <div className="bg-gray-900 border border-gray-800 rounded-2xl p-4">
+          <div className="flex items-center justify-between mb-3">
+            <span className="text-[10px] text-gray-600 font-semibold uppercase tracking-wider">My Batches</span>
+            <button onClick={() => navigate("/batches")} className="text-[10px] text-gray-600 hover:text-cyan-400 transition">
+              All →
+            </button>
+          </div>
+          <div className="space-y-3">
+            {batchSections.map(({ batch, quizzes }) => {
+              const att   = quizzes.filter(q => q.attempted).length
+              const total = quizzes.length
+              const pct   = total > 0 ? Math.round((att / total) * 100) : 0
+              return (
+                <div key={batch.id}>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <span className="text-[12px] text-gray-400 truncate flex-1 mr-2">{batch.name}</span>
+                    <span className="text-[10px] text-gray-600 tabular-nums shrink-0">{att}/{total}</span>
+                  </div>
+                  <div className="h-1 bg-gray-800 rounded-full overflow-hidden">
+                    <div
+                      className={`h-full rounded-full transition-all duration-700 ${pct === 100 ? "bg-emerald-500" : "bg-purple-500"}`}
+                      style={{ width: `${pct}%` }}
+                    />
+                  </div>
+                </div>
+              )
+            })}
+          </div>
         </div>
       )}
-    </section>
+
+      {/* Quick links */}
+      <div className="bg-gray-900 border border-gray-800 rounded-2xl p-4">
+        <span className="text-[10px] text-gray-600 font-semibold uppercase tracking-wider block mb-2.5">Quick links</span>
+        <div className="space-y-0.5">
+          {[
+            { label: "History",   path: "/history",   color: "text-cyan-400"   },
+            { label: "Bookmarks", path: "/bookmarks", color: "text-amber-400"  },
+            { label: "Batches",   path: "/batches",   color: "text-purple-400" },
+          ].map(({ label, path, color }) => (
+            <button
+              key={path}
+              onClick={() => navigate(path)}
+              className="w-full flex items-center justify-between px-2 py-2 rounded-lg hover:bg-gray-800/60 transition group"
+            >
+              <span className={`text-xs font-medium ${color}`}>{label}</span>
+              <ChevronRight size={11} className="text-gray-700 group-hover:text-gray-500 transition" />
+            </button>
+          ))}
+        </div>
+      </div>
+    </div>
   )
 }
 
-// ── FreeSection ───────────────────────────────────────────────────────────────
-function FreeSection({ upNext, done, hasFilters, navigate }) {
+// ─────────────────────────────────────────────────────────────────────────────
+// ANNOUNCEMENT
+// ─────────────────────────────────────────────────────────────────────────────
+
+function AnnouncementBanner({ ann, onDismiss }) {
+  const cfg = {
+    warning: { wrap: "bg-amber-500/8 border-amber-500/20",    dot: "bg-amber-400",   text: "text-amber-200"   },
+    success: { wrap: "bg-emerald-500/8 border-emerald-500/20", dot: "bg-emerald-400", text: "text-emerald-200" },
+    urgent:  { wrap: "bg-rose-500/8 border-rose-500/20",      dot: "bg-rose-400",    text: "text-rose-200"    },
+    info:    { wrap: "bg-blue-500/8 border-blue-500/20",      dot: "bg-blue-400",    text: "text-blue-200"    },
+  }
+  const c = cfg[ann.type] || cfg.info
+  return (
+    <div className={`border rounded-xl flex items-start gap-2.5 px-3.5 py-2.5 ${c.wrap}`}>
+      {ann.pinned && <span className="text-[11px] shrink-0 mt-0.5">📌</span>}
+      <div className={`w-1.5 h-1.5 rounded-full mt-1.5 shrink-0 ${c.dot}`} />
+      <p className={`flex-1 text-xs leading-relaxed ${c.text}`}>{ann.message}</p>
+      <button onClick={() => onDismiss(ann.id)} className={`shrink-0 ${c.text} opacity-40 hover:opacity-80 transition ml-1`}>
+        <X size={11} />
+      </button>
+    </div>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// BUCKET HEADER (inside a card)
+// ─────────────────────────────────────────────────────────────────────────────
+
+function BucketHeader({ icon: Icon, label, count, colorClass }) {
+  return (
+    <div className={`flex items-center gap-1.5 px-4 py-2 border-y border-gray-800/50 bg-gray-950/30 ${colorClass}`}>
+      <Icon size={10} />
+      <span className="text-[10px] font-bold uppercase tracking-widest">{label}</span>
+      <span className="text-[10px] font-bold opacity-40 ml-0.5">· {count}</span>
+    </div>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// QUIZ ROWS
+// ─────────────────────────────────────────────────────────────────────────────
+
+function RowUpNext({ quiz, batchId, navigate }) {
+  const DIFF = { easy: "text-emerald-500", medium: "text-amber-500", hard: "text-rose-500" }
+  const added = addedAgo(quiz.createdAt)
+  return (
+    <button
+      onClick={() => navigate(`/quiz/${quiz.id}/detail${batchId ? `?batchId=${batchId}` : ""}`)}
+      className="w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-800/40 transition-colors text-left group"
+    >
+      <div className="w-1.5 h-1.5 rounded-full bg-gray-700 shrink-0" />
+      <div className="flex-1 min-w-0">
+        <p className="text-[13px] text-gray-300 truncate group-hover:text-white transition-colors leading-tight">{quiz.title}</p>
+        <div className="flex items-center gap-2.5 mt-0.5 flex-wrap">
+          <span className="text-[11px] text-gray-700">
+            {quiz.questionCount || 0}Q · {quiz.totalTime || 10}m
+            {quiz.negativeMark > 0 && <span className="text-rose-700/70 ml-1">−{quiz.negativeMark}</span>}
+          </span>
+          {added && (
+            <span className="flex items-center gap-0.5 text-[10px] text-gray-700">
+              <CalendarDays size={9} />{added}
+            </span>
+          )}
+        </div>
+      </div>
+      <span className={`text-[10px] font-semibold shrink-0 capitalize ${DIFF[quiz.difficulty] || DIFF.medium}`}>
+        {quiz.difficulty || "Med"}
+      </span>
+      <span className="text-[11px] font-semibold text-purple-400 flex items-center gap-0.5 shrink-0 group-hover:gap-1.5 transition-all whitespace-nowrap">
+        Start <ChevronRight size={11} />
+      </span>
+    </button>
+  )
+}
+
+function RowRetry({ quiz, bestScore, attemptCount, lastAttemptAt, batchId, navigate }) {
+  return (
+    <button
+      onClick={() => navigate(`/quiz/${quiz.id}/detail${batchId ? `?batchId=${batchId}` : ""}`)}
+      className="w-full flex items-center gap-3 px-4 py-3 hover:bg-amber-500/5 transition-colors text-left group"
+    >
+      <div className="w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0" />
+      <div className="flex-1 min-w-0">
+        <p className="text-[13px] text-white truncate leading-tight">{quiz.title}</p>
+        <div className="flex items-center gap-2 mt-0.5">
+          <span className="text-[11px] text-gray-700">{attemptCount} {attemptCount === 1 ? "attempt" : "attempts"}</span>
+          {lastAttemptAt && (
+            <span className="flex items-center gap-0.5 text-[10px] text-gray-700">
+              <Clock size={9} />{timeAgo(lastAttemptAt)}
+            </span>
+          )}
+        </div>
+      </div>
+      <span className={`text-[11px] font-semibold rounded px-1.5 py-0.5 shrink-0 ${scoreBadge(bestScore)}`}>
+        {bestScore}%
+      </span>
+      <span className="text-[11px] font-semibold text-amber-400 flex items-center gap-1 shrink-0 group-hover:gap-1.5 transition-all whitespace-nowrap">
+        <RotateCcw size={10} /> Retry
+      </span>
+    </button>
+  )
+}
+
+function RowDone({ quiz, bestScore, attemptCount, rank, lastAttemptAt, batchId, navigate }) {
+  return (
+    <button
+      onClick={() => navigate(`/quiz/${quiz.id}/detail${batchId ? `?batchId=${batchId}` : ""}`)}
+      className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-gray-800/25 transition-colors text-left group"
+    >
+      <div className="w-1.5 h-1.5 rounded-full bg-emerald-600/60 shrink-0" />
+      <div className="flex-1 min-w-0">
+        <p className="text-[13px] text-gray-500 truncate leading-tight group-hover:text-gray-300 transition-colors">{quiz.title}</p>
+        <div className="flex items-center gap-2 mt-0.5">
+          {rank && <span className="text-[10px] text-gray-700">#{rank} rank</span>}
+          <span className="text-[10px] text-gray-700">{attemptCount} {attemptCount === 1 ? "attempt" : "attempts"}</span>
+          {lastAttemptAt && (
+            <span className="flex items-center gap-0.5 text-[10px] text-gray-700">
+              <Clock size={9} />{timeAgo(lastAttemptAt)}
+            </span>
+          )}
+        </div>
+      </div>
+      <span className={`text-[11px] font-semibold rounded px-1.5 py-0.5 shrink-0 ${scoreBadge(bestScore)}`}>
+        {bestScore}%
+      </span>
+      <ChevronRight size={11} className="text-gray-700 group-hover:text-gray-400 transition shrink-0" />
+    </button>
+  )
+}
+
+function ShowMore({ open, setOpen, total, shown }) {
+  if (total <= shown) return null
+  return (
+    <button
+      onClick={() => setOpen(o => !o)}
+      className="w-full flex items-center justify-center gap-1.5 py-2.5 text-[11px] text-gray-700 hover:text-gray-400 hover:bg-gray-800/30 transition border-t border-gray-800/30"
+    >
+      <ChevronDown size={11} className={`transition-transform ${open ? "rotate-180" : ""}`} />
+      {open ? "Show less" : `Show ${total - shown} more completed`}
+    </button>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// BATCH CARD
+// ─────────────────────────────────────────────────────────────────────────────
+
+function BatchCard({ batch, upNext, needsRetry, done, doneCount, totalCount, avg, navigate }) {
   const [doneOpen, setDoneOpen] = useState(false)
-  const DONE_PREVIEW = 4
-
-  if (upNext.length === 0 && done.length === 0) return null
-
-  const doneCount  = done.length
-  const totalCount = upNext.length + doneCount
+  const PREVIEW = 3
+  const pct = totalCount > 0 ? Math.round((doneCount / totalCount) * 100) : 0
+  const allGood = upNext.length === 0 && needsRetry.length === 0 && done.length > 0
 
   return (
-    <section className="mb-8">
-      {/* Header */}
-      <div className="rounded-2xl border border-gray-800 bg-gray-900/60 px-5 py-4 mb-4">
-        <div className="flex items-center gap-3 mb-3">
-          <Globe size={15} className="text-cyan-400 shrink-0" />
-          <h2 className="text-base font-bold text-white flex-1">Free Quizzes</h2>
-          <span className="text-xs bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 px-2 py-0.5 rounded-full font-bold shrink-0">Open</span>
+    <div className="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden">
+      {/* Batch header */}
+      <div className="flex items-center gap-3 px-4 py-3.5">
+        <div className="w-8 h-8 rounded-lg bg-purple-500/10 border border-purple-500/20 flex items-center justify-center shrink-0">
+          <GraduationCap size={13} className="text-purple-400" />
         </div>
-        <div className="flex items-center gap-3">
-          <div className="flex-1 h-1.5 bg-gray-800 rounded-full overflow-hidden">
-            <div className="h-full rounded-full bg-cyan-500 transition-all duration-700"
-              style={{ width: `${totalCount > 0 ? Math.round((doneCount / totalCount) * 100) : 0}%` }} />
-          </div>
-          <span className="text-xs text-gray-500 shrink-0 tabular-nums">{doneCount}/{totalCount} done</span>
+        <div className="flex-1 min-w-0">
+          <h2 className="text-[13px] font-semibold text-white truncate leading-tight">{batch.name}</h2>
+          <p className="text-[10px] text-gray-600 mt-0.5">{totalCount} quizzes</p>
         </div>
+        <button onClick={() => navigate("/batches")} className="text-[10px] text-gray-600 hover:text-purple-400 transition shrink-0 whitespace-nowrap">
+          Details →
+        </button>
       </div>
 
-      <div className="space-y-5">
-        {upNext.length > 0 && (
-          <div>
-            <div className="flex items-center gap-2 mb-2.5">
-              <Zap size={12} className="text-cyan-400" />
-              <span className="text-xs font-black uppercase tracking-widest text-cyan-400/80">Available</span>
-              <span className="text-[10px] text-cyan-400/40 font-bold bg-cyan-500/10 border border-cyan-500/15 px-1.5 py-0.5 rounded-full">{upNext.length}</span>
-            </div>
-            <div className="space-y-1.5">
-              {upNext.map(q => (
-                <QuizRow key={q.id} quiz={q} batchId={null} navigate={navigate} />
-              ))}
-            </div>
-          </div>
-        )}
-
-        {done.length > 0 && (
-          <div>
-            <div className="flex items-center gap-2 mb-2.5">
-              <CheckCircle2 size={12} className="text-gray-500" />
-              <span className="text-xs font-black uppercase tracking-widest text-gray-600">Completed</span>
-              <span className="text-[10px] text-gray-600 font-bold bg-gray-800 border border-gray-700/50 px-1.5 py-0.5 rounded-full">{done.length}</span>
-            </div>
-            <div className="space-y-1.5">
-              {(doneOpen ? done : done.slice(0, DONE_PREVIEW)).map(({ quiz, bestScore, attemptCount, rank }) => (
-                <DoneRow key={quiz.id} quiz={quiz} bestScore={bestScore} attemptCount={attemptCount} rank={rank} batchId={null} navigate={navigate} />
-              ))}
-            </div>
-            {done.length > DONE_PREVIEW && (
-              <button
-                onClick={() => setDoneOpen(o => !o)}
-                className="mt-2 w-full flex items-center justify-center gap-1.5 py-2 rounded-xl border border-gray-800/60 text-xs text-gray-600 hover:text-gray-400 hover:border-gray-700 transition">
-                <ChevronDown size={12} className={`transition-transform ${doneOpen ? "rotate-180" : ""}`} />
-                {doneOpen ? "Show less" : `Show ${done.length - DONE_PREVIEW} more completed`}
-              </button>
-            )}
-          </div>
+      {/* Progress */}
+      <div className="px-4 pb-3.5 flex items-center gap-2.5">
+        <div className="flex-1 h-1 bg-gray-800 rounded-full overflow-hidden">
+          <div
+            className={`h-full rounded-full transition-all duration-700 ${pct === 100 ? "bg-emerald-500" : pct >= 60 ? "bg-cyan-500" : "bg-purple-500"}`}
+            style={{ width: `${pct}%` }}
+          />
+        </div>
+        <span className="text-[10px] text-gray-700 tabular-nums shrink-0">{doneCount}/{totalCount}</span>
+        {avg !== null && (
+          <span className={`text-[10px] font-semibold tabular-nums shrink-0 ${scoreColor(avg)}`}>avg {avg}%</span>
         )}
       </div>
-    </section>
+
+      {/* 1. UP NEXT */}
+      {upNext.length > 0 && (
+        <>
+          <BucketHeader icon={Zap} label="Up next" count={upNext.length} colorClass="text-cyan-500" />
+          <div className="divide-y divide-gray-800/30">
+            {upNext.map(({ quiz }) => (
+              <RowUpNext key={quiz.id} quiz={quiz} batchId={batch.id} navigate={navigate} />
+            ))}
+          </div>
+        </>
+      )}
+
+      {/* 2. NEEDS ATTENTION */}
+      {needsRetry.length > 0 && (
+        <>
+          <BucketHeader icon={AlertTriangle} label="Needs attention" count={needsRetry.length} colorClass="text-amber-500" />
+          <div className="divide-y divide-gray-800/30">
+            {needsRetry.map(({ quiz, bestScore, attemptCount, lastAttemptAt }) => (
+              <RowRetry key={quiz.id} quiz={quiz} bestScore={bestScore} attemptCount={attemptCount} lastAttemptAt={lastAttemptAt} batchId={batch.id} navigate={navigate} />
+            ))}
+          </div>
+        </>
+      )}
+
+      {/* 3. COMPLETED */}
+      {done.length > 0 && (
+        <>
+          <BucketHeader icon={CheckCircle2} label="Completed" count={done.length} colorClass="text-gray-600" />
+          <div className="divide-y divide-gray-800/20">
+            {(doneOpen ? done : done.slice(0, PREVIEW)).map(({ quiz, bestScore, attemptCount, rank, lastAttemptAt }) => (
+              <RowDone key={quiz.id} quiz={quiz} bestScore={bestScore} attemptCount={attemptCount} rank={rank} lastAttemptAt={lastAttemptAt} batchId={batch.id} navigate={navigate} />
+            ))}
+          </div>
+          <ShowMore open={doneOpen} setOpen={setDoneOpen} total={done.length} shown={PREVIEW} />
+        </>
+      )}
+
+      {/* All done */}
+      {allGood && (
+        <div className="flex items-center gap-2 px-4 py-2.5 bg-emerald-500/5 border-t border-emerald-500/10">
+          <Trophy size={12} className="text-emerald-400 shrink-0" />
+          <p className="text-[11px] text-emerald-400/80">All quizzes completed with good scores!</p>
+        </div>
+      )}
+    </div>
   )
 }
 
-// ── Main component ────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+// FREE SECTION CARD
+// ─────────────────────────────────────────────────────────────────────────────
+
+function FreeCard({ upNext, done, navigate }) {
+  const [doneOpen, setDoneOpen] = useState(false)
+  const PREVIEW = 3
+  if (upNext.length === 0 && done.length === 0) return null
+  const total = upNext.length + done.length
+  const pct = total > 0 ? Math.round((done.length / total) * 100) : 0
+
+  return (
+    <div className="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden">
+      <div className="flex items-center gap-3 px-4 py-3.5">
+        <div className="w-8 h-8 rounded-lg bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center shrink-0">
+          <Globe size={13} className="text-cyan-400" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <h2 className="text-[13px] font-semibold text-white leading-tight">Free Quizzes</h2>
+          <p className="text-[10px] text-gray-600 mt-0.5">Open to all students</p>
+        </div>
+        <span className="text-[10px] text-gray-700 tabular-nums shrink-0">{done.length}/{total}</span>
+      </div>
+
+      <div className="px-4 pb-3.5">
+        <div className="h-1 bg-gray-800 rounded-full overflow-hidden">
+          <div className="h-full rounded-full bg-cyan-500 transition-all duration-700" style={{ width: `${pct}%` }} />
+        </div>
+      </div>
+
+      {upNext.length > 0 && (
+        <>
+          <BucketHeader icon={BookOpen} label="Available" count={upNext.length} colorClass="text-cyan-500" />
+          <div className="divide-y divide-gray-800/30">
+            {upNext.map(q => <RowUpNext key={q.id} quiz={q} batchId={null} navigate={navigate} />)}
+          </div>
+        </>
+      )}
+
+      {done.length > 0 && (
+        <>
+          <BucketHeader icon={CheckCircle2} label="Completed" count={done.length} colorClass="text-gray-600" />
+          <div className="divide-y divide-gray-800/20">
+            {(doneOpen ? done : done.slice(0, PREVIEW)).map(({ quiz, bestScore, attemptCount, rank, lastAttemptAt }) => (
+              <RowDone key={quiz.id} quiz={quiz} bestScore={bestScore} attemptCount={attemptCount} rank={rank} lastAttemptAt={lastAttemptAt} batchId={null} navigate={navigate} />
+            ))}
+          </div>
+          <ShowMore open={doneOpen} setOpen={setDoneOpen} total={done.length} shown={PREVIEW} />
+        </>
+      )}
+    </div>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// MAIN DASHBOARD
+// ─────────────────────────────────────────────────────────────────────────────
+
 export default function Dashboard() {
   const { currentUser, userProfile } = useAuth()
   const navigate = useNavigate()
 
-  // ── Phase 1 state (fast — user-specific data) ──
-  const [batchSections, setBatchSections]   = useState([])
-  const [attemptedFree, setAttemptedFree]   = useState([])
-  const [announcements, setAnnouncements]   = useState([])
-  const [phase1Done, setPhase1Done]         = useState(false)
-
-  // ── Phase 2 state (background — free quizzes) ──
-  const [freeQuizzes, setFreeQuizzes]       = useState([])
-  const [categories, setCategories]         = useState([])
-  const [phase2Done, setPhase2Done]         = useState(false)
+  const [batchSections, setBatchSections] = useState([])
+  const [attemptedFree, setAttemptedFree] = useState([])
+  const [announcements, setAnnouncements] = useState([])
+  const [phase1Done, setPhase1Done]       = useState(false)
+  const [freeQuizzes, setFreeQuizzes]     = useState([])
+  const [phase2Done, setPhase2Done]       = useState(false)
+  const [allAttempts, setAllAttempts]     = useState([])
 
   const [dismissedIds, setDismissedIds] = useState(() => {
     try { return JSON.parse(localStorage.getItem("dismissedAnnouncements") || "[]") } catch { return [] }
   })
 
-  const [search, setSearch]             = useState("")
-  const [diffFilter, setDiffFilter]     = useState("all")
-  const [catFilter, setCatFilter]       = useState("all")
-  const [activeSection, setActiveSection] = useState("all")
+  const [search, setSearch]       = useState("")
+  const [activeTab, setActiveTab] = useState("all")
 
-  const loading = !phase1Done  // show skeleton until phase 1 done
-
+  // ── DATA FETCH (same Firestore reads as original) ──────────────────────────
   useEffect(() => {
     if (!currentUser) return
 
-    // ────────────────────────────────────────────────────────────────────────
-    // PHASE 1: Fetch user-specific data — batches + attempts + announcements
-    // These are cheap reads (small collections filtered by userId).
-    // quizSets served from localStorage cache (instant on refresh).
-    // ────────────────────────────────────────────────────────────────────────
+    function runPhase2(allQuizzes) {
+      try {
+        const published = allQuizzes.filter(isPublished)
+        setFreeQuizzes(published.filter(q => q.isFree === true))
+        setPhase2Done(true)
+      } catch (e) {
+        console.error("Phase 2 error:", e)
+        setPhase2Done(true)
+      }
+    }
+
     async function phase1() {
       try {
-        const now = new Date()
-
-        // Fix 1+3: removed getDocs(batches) from this parallel block.
-        // userProfile.batchIds (from AuthContext onSnapshot, already in memory) tells
-        // us which batches the user belongs to — zero extra reads.
         const [allQuizzes, announceData, attSnap] = await Promise.all([
           cachedGetDocs(
             "quizSets",
             collection(db, "quizSets"),
-            {
-              ttl: TTL_LONG,
-              revalidate: true,
-              onUpdate: (freshQuizzes) => runPhase2(freshQuizzes, currentUser.uid),
-            }
+            { ttl: TTL_LONG, revalidate: true, onUpdate: (fresh) => runPhase2(fresh) }
           ),
-          // Fix 4: announcements cached 10 min in localStorage (they rarely change).
           cachedGetDocs(
             "query:announcements",
             query(collection(db, "announcements"), where("active", "==", true)),
@@ -382,53 +546,36 @@ export default function Dashboard() {
         ])
 
         setAnnouncements(announceData)
-
-        const myAttempts = attSnap
-        const attemptedIds = new Set(myAttempts.map(a => a.quizId))
+        setAllAttempts(attSnap)
 
         function statsFor(quizId) {
-          const mine = myAttempts.filter(a => a.quizId === quizId)
-          if (mine.length === 0) return null
-          return {
-            best: Math.round(Math.max(...mine.map(a => (a.score / (a.maxScore || a.totalQ)) * 100))),
-            count: mine.length,
-          }
+          const mine = attSnap.filter(a => a.quizId === quizId)
+          if (!mine.length) return null
+          const best = Math.round(Math.max(...mine.map(a => (a.score / (a.maxScore || a.totalQ || 1)) * 100)))
+          const lastAt = mine.reduce((latest, a) => {
+            if (!latest) return a.submittedAt
+            const tD = a.submittedAt?.toDate ? a.submittedAt.toDate() : new Date(a.submittedAt || 0)
+            const lD = latest?.toDate ? latest.toDate() : new Date(latest || 0)
+            return tD > lD ? a.submittedAt : latest
+          }, null)
+          return { best, count: mine.length, lastAt }
         }
         function rankFor(quizId) {
-          const first = myAttempts.find(a => a.quizId === quizId && (a.attemptNumber ?? 1) === 1)
+          const first = attSnap.find(a => a.quizId === quizId && (a.attemptNumber ?? 1) === 1)
           return first?.rank || null
         }
 
-        const published = allQuizzes.filter(q => {
-          if (q.status === "published") return true
-          if (q.status === "scheduled" && q.publishAt && new Date(q.publishAt) <= now) return true
-          return false
-        })
-
-        // ── Fix 1+3: membership from userProfile.batchIds — zero reads ─────
-        // batchIds written atomically on add/remove (Fix 1). Already in memory
-        // via AuthContext onSnapshot. No getDocs(batches), no N getDoc calls.
-        // Fall back gracefully for users added before this fix was deployed.
+        const published = allQuizzes.filter(isPublished)
         const userBatchIds = userProfile?.batchIds || []
-
         const sections = []
-        if (userBatchIds.length > 0) {
-          const CHUNK = 30
-          const chunks = []
-          for (let i = 0; i < userBatchIds.length; i += CHUNK) {
-            chunks.push(userBatchIds.slice(i, i + CHUNK))
-          }
 
-          // Sprint 3 Fix A: cache batch docs + batchQuizzes with 60s TTL.
-          // Key includes a sorted snapshot of the user's batchIds so the cache
-          // correctly misses when their batch membership changes.
-          const batchKey   = `batches:${[...userBatchIds].sort().join(",")}`
-          const bqKey      = `batchQuiz:${[...userBatchIds].sort().join(",")}`
+        if (userBatchIds.length > 0) {
+          const batchKey = `batches:${[...userBatchIds].sort().join(",")}`
+          const bqKey    = `batchQuiz:${[...userBatchIds].sort().join(",")}`
 
           const [allBatchDocs, allBatchQuizDocs] = await Promise.all([
             cachedGetDocs(
               batchKey,
-              // Firestore __name__ trick: fetch docs by their IDs without N getDoc calls
               query(collection(db, "batches"), where("__name__", "in", userBatchIds.slice(0, 30))),
               { ttl: TTL_SHORT, revalidate: true }
             ),
@@ -440,11 +587,8 @@ export default function Dashboard() {
           ])
 
           for (const batch of allBatchDocs) {
-            // Fix 6: double-check via batch.memberIds (O(1), no extra read).
-            // Accept if either source confirms membership (graceful migration).
             const memberIds = batch.memberIds || []
             if (!memberIds.includes(currentUser.uid) && !userBatchIds.includes(batch.id)) continue
-
             const batchDocs = allBatchQuizDocs.filter(d => d.batchId === batch.id)
             const quizzes = batchDocs
               .map(bq => {
@@ -457,6 +601,7 @@ export default function Dashboard() {
                   bestScore: stats?.best ?? null,
                   rank: rankFor(quiz.id),
                   attemptCount: stats?.count ?? 0,
+                  lastAttemptAt: stats?.lastAt ?? null,
                 }
               })
               .filter(Boolean)
@@ -465,219 +610,244 @@ export default function Dashboard() {
         }
         setBatchSections(sections)
 
-        // ── Attempted free quizzes ────────────────────────────────────────
+        const seen = new Set()
         const triedFree = []
-        const processedIds = new Set()
-        for (const quizId of attemptedIds) {
-          if (processedIds.has(quizId)) continue
-          const quizMeta = published.find(q => q.id === quizId)
-          if (!quizMeta?.isFree) continue
-          processedIds.add(quizId)
-          if (quizMeta) {
-            const stats = statsFor(quizId)
-            triedFree.push({ quiz: quizMeta, bestScore: stats?.best ?? null, rank: rankFor(quizId), attemptCount: stats?.count ?? 0 })
-          }
+        for (const a of attSnap) {
+          if (seen.has(a.quizId)) continue
+          const q = published.find(x => x.id === a.quizId)
+          if (!q?.isFree) continue
+          seen.add(a.quizId)
+          const stats = statsFor(a.quizId)
+          triedFree.push({ quiz: q, bestScore: stats?.best ?? null, rank: rankFor(a.quizId), attemptCount: stats?.count ?? 0, lastAttemptAt: stats?.lastAt ?? null })
         }
         setAttemptedFree(triedFree)
-
         setPhase1Done(true)
-
-        // ── Kick off phase 2 in background (non-blocking) ────────────────
-        runPhase2(allQuizzes, currentUser.uid)
+        runPhase2(allQuizzes)
 
       } catch (e) {
         console.error("Phase 1 error:", e)
-        setPhase1Done(true)  // show page even on error
+        setPhase1Done(true)
       }
     }
 
     phase1()
   }, [currentUser, userProfile])
 
-  // ────────────────────────────────────────────────────────────────────────────
-  // PHASE 2: Derive free quizzes from already-fetched allQuizzes.
-  // No extra Firestore reads — just filters the cached list.
-  // Called immediately after phase1 and again if stale-while-revalidate fires.
-  // ────────────────────────────────────────────────────────────────────────────
-  function runPhase2(allQuizzes, uid) {
-    try {
-      const now = new Date()
-      const published = allQuizzes.filter(q => {
-        if (q.status === "published") return true
-        if (q.status === "scheduled" && q.publishAt && new Date(q.publishAt) <= now) return true
-        return false
-      })
-
-      // FIX: We no longer fetch the full batchQuizzes collection globally.
-      // isFree quizzes are explicitly marked, so we can filter without
-      // a global batchQuizzes scan — saving hundreds of reads.
-      const freePublished = published.filter(q => q.isFree === true)
-      const cats = [...new Set(freePublished.map(q => q.category).filter(Boolean))]
-      setCategories(cats)
-      setFreeQuizzes(freePublished)
-      setPhase2Done(true)
-    } catch (e) {
-      console.error("Phase 2 error:", e)
-      setPhase2Done(true)
-    }
-  }
-
-  function dismissAnnouncement(id) {
+  const dismissAnnouncement = useCallback((id) => {
     const next = [...dismissedIds, id]
     setDismissedIds(next)
     localStorage.setItem("dismissedAnnouncements", JSON.stringify(next))
+  }, [dismissedIds])
+
+  // ── DERIVED STATS ──────────────────────────────────────────────────────────
+  const { totalAttempted, avgScore, needsRetryCount, streakDays } = useMemo(() => {
+    const uniq = new Set(allAttempts.map(a => a.quizId))
+    const firstAttempts = allAttempts.filter(a => (a.attemptNumber ?? 1) === 1)
+    const avgScore = firstAttempts.length > 0
+      ? Math.round(firstAttempts.reduce((s, a) => s + (a.score / (a.maxScore || a.totalQ || 1)) * 100, 0) / firstAttempts.length)
+      : null
+
+    let needsRetryCount = 0
+    for (const { quizzes } of batchSections) {
+      needsRetryCount += quizzes.filter(q => q.attempted && q.bestScore < 70).length
+    }
+
+    const today = new Date()
+    const dow = today.getDay()
+    let streakDays = 0
+    for (let i = 0; i <= dow; i++) {
+      const d = new Date(today)
+      d.setDate(d.getDate() - i)
+      const key = d.toDateString()
+      const hit = allAttempts.some(a => {
+        if (!a.submittedAt) return false
+        const ad = a.submittedAt?.toDate ? a.submittedAt.toDate() : new Date(a.submittedAt)
+        return ad.toDateString() === key
+      })
+      if (hit) streakDays++
+      else if (i > 0) break
+    }
+
+    return { totalAttempted: uniq.size, avgScore, needsRetryCount, streakDays }
+  }, [allAttempts, batchSections])
+
+  // ── FILTER HELPERS ─────────────────────────────────────────────────────────
+  const matchSearch = useCallback((title, category) => {
+    if (!search) return true
+    const q = search.toLowerCase()
+    return title?.toLowerCase().includes(q) || category?.toLowerCase().includes(q)
+  }, [search])
+
+  function applyTab(quizzes) {
+    if (activeTab === "pending")   return quizzes.filter(q => !q.attempted || q.bestScore < 70)
+    if (activeTab === "completed") return quizzes.filter(q => q.attempted && q.bestScore >= 70)
+    return quizzes
   }
 
-  function matchFilters(quiz) {
-    const matchSearch = !search ||
-      quiz.title?.toLowerCase().includes(search.toLowerCase()) ||
-      quiz.category?.toLowerCase().includes(search.toLowerCase())
-    const matchDiff = diffFilter === "all" || quiz.difficulty === diffFilter
-    const matchCat  = catFilter === "all" || quiz.category === catFilter
-    return matchSearch && matchDiff && matchCat
-  }
+  const attemptedFreeIds  = new Set(attemptedFree.map(a => a.quiz.id))
+  const freeUpNextRaw     = freeQuizzes.filter(q => !attemptedFreeIds.has(q.id) && matchSearch(q.title, q.category))
+  const freeDoneRaw       = attemptedFree.filter(({ quiz }) => matchSearch(quiz.title, quiz.category))
+  const filteredFreeUpNext = activeTab === "completed" ? [] : freeUpNextRaw
+  const filteredFreeDone   = activeTab === "pending"   ? [] : freeDoneRaw
 
-  const hasFilters = search || diffFilter !== "all" || catFilter !== "all"
-  const visibleAnn = announcements.filter(a => !dismissedIds.includes(a.id))
+  const visibleAnn = announcements
+    .filter(a => !dismissedIds.includes(a.id) && !(a.expiresAt && new Date(a.expiresAt) < new Date()))
+    .sort((a, b) => (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0))
 
-  // Derive attempted IDs to filter free quizzes not yet attempted
-  const attemptedFreeIds = new Set(attemptedFree.map(a => a.quiz.id))
-  const unattemptedFree = freeQuizzes.filter(q => !attemptedFreeIds.has(q.id))
+  const isEmpty = phase2Done && freeQuizzes.length === 0 && attemptedFree.length === 0 && batchSections.length === 0
 
-  const shownBatchSections = activeSection === "all"
-    ? batchSections
-    : batchSections.filter(s => s.batch.id === activeSection)
-
-  const filteredFree          = unattemptedFree.filter(q => matchFilters(q))
-  const filteredAttemptedFree = attemptedFree.filter(({ quiz }) => matchFilters(quiz))
-  const hasBatches            = batchSections.length > 0
-
+  // ── RENDER ─────────────────────────────────────────────────────────────────
   return (
     <div className="min-h-screen bg-gray-950 text-white">
       <Navbar />
-      <div className="max-w-7xl mx-auto px-3 sm:px-6 py-4 sm:py-6 pb-24 sm:pb-6">
 
-        {/* ── ANNOUNCEMENTS ── */}
-        {[...visibleAnn]
-          .filter(a => !(a.expiresAt && new Date(a.expiresAt) < new Date()))
-          .sort((a, b) => (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0))
-          .map(ann => {
-            const cfg =
-              ann.type === "warning" ? { bg: "bg-amber-500/10",   border: "border-amber-500/25",   text: "text-amber-200",   icon: "⚠️" } :
-              ann.type === "success" ? { bg: "bg-emerald-500/10", border: "border-emerald-500/25", text: "text-emerald-200", icon: "✅" } :
-              ann.type === "urgent"  ? { bg: "bg-rose-500/10",    border: "border-rose-500/25",    text: "text-rose-200",    icon: "🚨" } :
-                                       { bg: "bg-cyan-500/10",    border: "border-cyan-500/25",    text: "text-cyan-200",    icon: "ℹ️" }
-            return (
-              <div key={ann.id} className={`mb-3 rounded-2xl border overflow-hidden ${cfg.bg} ${cfg.border}`}>
-                {ann.pinned && (
-                  <div className={`flex items-center gap-1.5 px-4 py-1 border-b ${cfg.border} bg-black/10`}>
-                    <svg width="9" height="9" viewBox="0 0 24 24" fill="currentColor" className={cfg.text}><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
-                    <span className={`text-[10px] font-bold uppercase tracking-wider ${cfg.text} opacity-70`}>Pinned</span>
-                  </div>
-                )}
-                <div className="flex items-start gap-3 px-4 py-3">
-                  <span className="text-base shrink-0 mt-0.5">{cfg.icon}</span>
-                  <p className={`flex-1 text-sm leading-relaxed ${cfg.text}`}>{ann.message}</p>
-                  <button onClick={() => dismissAnnouncement(ann.id)}
-                    className={`shrink-0 ${cfg.text} opacity-40 hover:opacity-80 transition p-0.5`}>
-                    <X size={13}/>
-                  </button>
-                </div>
-              </div>
-            )
-          })
-        }
+      {/*
+        Full-width container up to screen-xl (1280px).
+        lg+ → 2 columns: sticky 272px sidebar + scrollable main area
+        < lg → single column, hero panel shown above content
+      */}
+      <div className="max-w-screen-xl mx-auto w-full px-4 sm:px-6 py-5 pb-24 sm:pb-8">
+        <div className="flex gap-5 items-start">
 
-        {/* ── SEARCH ── */}
-        <div className="relative mb-6">
-          <Search size={13} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-600" />
-          <input
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            placeholder="Search quizzes..."
-            className="w-full bg-gray-900 border border-gray-800 rounded-xl pl-9 pr-4 py-2.5 text-sm text-white placeholder-gray-600 focus:border-gray-700 focus:outline-none"
-          />
-          {search && (
-            <button onClick={() => setSearch("")} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-600 hover:text-white transition">
-              <X size={13} />
-            </button>
-          )}
-        </div>
-
-        {/* ── SKELETON ── */}
-        {loading ? (
-          <>
-            <SkeletonSection count={3} />
-            <SkeletonSection count={4} />
-          </>
-        ) : (
-          <>
-            {/* ══════════════════════════════════════════
-                BATCH SECTIONS
-            ══════════════════════════════════════════ */}
-            {shownBatchSections.map(({ batch, quizzes }) => {
-              const filtered = quizzes.filter(({ quiz }) => matchFilters(quiz))
-              if (filtered.length === 0 && hasFilters) return null
-
-              // Separate into three buckets
-              const needsRetry = filtered.filter(({ attempted, bestScore }) => attempted && bestScore < 70)
-              const upNext     = filtered.filter(({ attempted }) => !attempted)
-              const done       = filtered.filter(({ attempted, bestScore }) => attempted && bestScore >= 70)
-
-              const totalCount  = filtered.length
-              const doneCount   = filtered.filter(({ attempted }) => attempted).length
-              const pct         = totalCount > 0 ? Math.round((doneCount / totalCount) * 100) : 0
-              const avgScore    = doneCount > 0
-                ? Math.round(filtered.filter(({ attempted }) => attempted).reduce((s, { bestScore }) => s + (bestScore || 0), 0) / doneCount)
-                : null
-
-              return (
-                <BatchSection
-                  key={batch.id}
-                  batch={batch}
-                  needsRetry={needsRetry}
-                  upNext={upNext}
-                  done={done}
-                  totalCount={totalCount}
-                  doneCount={doneCount}
-                  pct={pct}
+          {/* ── STICKY SIDEBAR (desktop only) ───────────────────────────────── */}
+          <aside className="hidden lg:block w-68 shrink-0 sticky top-[72px]" style={{ width: "272px" }}>
+            {phase1Done
+              ? <HeroPanel
+                  currentUser={currentUser}
+                  totalAttempted={totalAttempted}
                   avgScore={avgScore}
-                  hasFilters={hasFilters}
+                  needsRetryCount={needsRetryCount}
+                  streakDays={streakDays}
+                  batchSections={batchSections}
                   navigate={navigate}
                 />
-              )
-            })}
+              : <div className="space-y-3">
+                  <div className="h-52 bg-gray-900 border border-gray-800 rounded-2xl animate-pulse" />
+                  <div className="h-28 bg-gray-900 border border-gray-800 rounded-2xl animate-pulse" />
+                </div>
+            }
+          </aside>
 
-            {/* ══════════════════════════════════════════
-                FREE QUIZZES
-            ══════════════════════════════════════════ */}
-            {(activeSection === "all" || activeSection === "__free__") && (
-              !phase2Done ? (
-                <SkeletonSection count={4} />
-              ) : (
-                <>
-                  {(filteredFree.length > 0 || filteredAttemptedFree.length > 0) && (
-                    <FreeSection
-                      upNext={filteredFree}
-                      done={filteredAttemptedFree}
-                      hasFilters={hasFilters}
-                      navigate={navigate}
-                    />
-                  )}
-                </>
-              )
-            )}
+          {/* ── MAIN CONTENT AREA ───────────────────────────────────────────── */}
+          <main className="flex-1 min-w-0 space-y-3">
 
-            {/* ── EMPTY STATE ── */}
-            {phase2Done && freeQuizzes.length === 0 && attemptedFree.length === 0 && batchSections.length === 0 && (
-              <div className="text-center py-20">
-                <div className="text-6xl mb-4">🎯</div>
-                <h3 className="text-xl font-bold text-white mb-2">No quizzes yet</h3>
-                <p className="text-gray-500">Your admin hasn't published any quizzes yet.</p>
+            {/* Mobile hero (shows above on small screens) */}
+            {phase1Done && (
+              <div className="lg:hidden">
+                <HeroPanel
+                  currentUser={currentUser}
+                  totalAttempted={totalAttempted}
+                  avgScore={avgScore}
+                  needsRetryCount={needsRetryCount}
+                  streakDays={streakDays}
+                  batchSections={batchSections}
+                  navigate={navigate}
+                />
               </div>
             )}
-          </>
-        )}
+
+            {/* Announcements */}
+            {visibleAnn.map(ann => (
+              <AnnouncementBanner key={ann.id} ann={ann} onDismiss={dismissAnnouncement} />
+            ))}
+
+            {/* Search bar */}
+            <div className="relative">
+              <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-600 pointer-events-none" />
+              <input
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+                placeholder="Search quizzes…"
+                className="w-full bg-gray-900 border border-gray-800 rounded-xl pl-8 pr-8 py-2.5 text-sm text-white placeholder-gray-700 focus:border-gray-700 focus:outline-none transition"
+              />
+              {search && (
+                <button onClick={() => setSearch("")} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-600 hover:text-white transition">
+                  <X size={13} />
+                </button>
+              )}
+            </div>
+
+            {/* Tab pills */}
+            <div className="flex gap-2">
+              {[
+                { key: "all",       label: "All" },
+                { key: "pending",   label: "Pending" },
+                { key: "completed", label: "Completed" },
+              ].map(tab => (
+                <button
+                  key={tab.key}
+                  onClick={() => setActiveTab(tab.key)}
+                  className={`text-xs font-semibold px-4 py-1.5 rounded-full border transition ${
+                    activeTab === tab.key
+                      ? "bg-purple-500/15 border-purple-500/30 text-purple-300"
+                      : "bg-transparent border-gray-800 text-gray-600 hover:border-gray-700 hover:text-gray-400"
+                  }`}
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </div>
+
+            {/* Skeleton state */}
+            {!phase1Done ? (
+              <>
+                <SkeletonCard />
+                <SkeletonCard />
+              </>
+            ) : (
+              <>
+                {/* BATCH CARDS — Order inside: Up Next → Needs Attention → Completed */}
+                {batchSections.map(({ batch, quizzes }) => {
+                  const filtered = applyTab(quizzes.filter(({ quiz }) => matchSearch(quiz.title, quiz.category)))
+                  if (!filtered.length) return null
+
+                  const upNext     = filtered.filter(({ attempted }) => !attempted)
+                  const needsRetry = filtered.filter(({ attempted, bestScore }) => attempted && bestScore < 70)
+                  const done       = filtered.filter(({ attempted, bestScore }) => attempted && bestScore >= 70)
+                  const doneCount  = filtered.filter(q => q.attempted).length
+                  const avg        = doneCount > 0
+                    ? Math.round(filtered.filter(q => q.attempted).reduce((s, q) => s + (q.bestScore || 0), 0) / doneCount)
+                    : null
+
+                  return (
+                    <BatchCard
+                      key={batch.id}
+                      batch={batch}
+                      upNext={upNext}
+                      needsRetry={needsRetry}
+                      done={done}
+                      doneCount={doneCount}
+                      totalCount={filtered.length}
+                      avg={avg}
+                      navigate={navigate}
+                    />
+                  )
+                })}
+
+                {/* FREE QUIZZES */}
+                {!phase2Done ? (
+                  <SkeletonCard />
+                ) : (
+                  <FreeCard
+                    upNext={filteredFreeUpNext}
+                    done={filteredFreeDone}
+                    navigate={navigate}
+                  />
+                )}
+
+                {/* EMPTY STATE */}
+                {isEmpty && (
+                  <div className="text-center py-20">
+                    <div className="text-5xl mb-4">🎯</div>
+                    <h3 className="text-base font-semibold text-white mb-1">No quizzes yet</h3>
+                    <p className="text-sm text-gray-600">Your admin hasn't published any quizzes yet.</p>
+                  </div>
+                )}
+              </>
+            )}
+          </main>
+
+        </div>
       </div>
     </div>
   )
