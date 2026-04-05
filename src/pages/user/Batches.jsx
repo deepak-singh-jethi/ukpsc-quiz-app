@@ -14,7 +14,7 @@ import {
   GraduationCap, BookOpen, ChevronRight, Lock, CheckCircle,
   ArrowLeft, Star, Zap, Trophy, Target, Send, Hash,
   MessageCircle, ChevronLeft, X, Search, Filter,
-  CheckSquare, Circle
+  CheckSquare, Circle, ChevronDown, Layers, Tag, AlertCircle
 } from "lucide-react"
 
 //  Chat bubble 
@@ -43,6 +43,227 @@ function Bubble({ msg, currentUserId }) {
           {msg.text}
         </div>
       </div>
+    </div>
+  )
+}
+
+// ── Wizard Card Selector ──────────────────────────────────────────────────────
+// Replaces horizontal subject scroll + topic dropdown with a beautiful
+// two-step wizard: Step 1 pick subject → Step 2 pick topic.
+// Items sorted by most-pending first so priority is always at the top.
+function WizardSelector({ subjects, subjectMap, topics, topicStats, activeSubject, activeTopic, onSubjectChange, onTopicChange }) {
+  const [subjectOpen, setSubjectOpen] = useState(false)
+  const [topicOpen,   setTopicOpen]   = useState(false)
+  const wrapperRef = useRef(null)  // outer row — panels anchor to this full width
+
+  // Close panels when clicking outside the entire selector row
+  useEffect(() => {
+    function handler(e) {
+      if (wrapperRef.current && !wrapperRef.current.contains(e.target)) {
+        setSubjectOpen(false)
+        setTopicOpen(false)
+      }
+    }
+    document.addEventListener("mousedown", handler)
+    return () => document.removeEventListener("mousedown", handler)
+  }, [])
+
+  // Sort subjects by pending (most pending first)
+  const sortedSubjects = useMemo(() => {
+    return [...subjects].sort((a, b) => {
+      const pendA = (subjectMap[a]?.total || 0) - (subjectMap[a]?.done || 0)
+      const pendB = (subjectMap[b]?.total || 0) - (subjectMap[b]?.done || 0)
+      return pendB - pendA
+    })
+  }, [subjects, subjectMap])
+
+  // Sort topics by pending (most pending first)
+  const sortedTopics = useMemo(() => {
+    return [...topics].sort((a, b) => {
+      const pendA = (topicStats[a]?.total || 0) - (topicStats[a]?.done || 0)
+      const pendB = (topicStats[b]?.total || 0) - (topicStats[b]?.done || 0)
+      return pendB - pendA
+    })
+  }, [topics, topicStats])
+
+  const subjectLabel = activeSubject === "all" ? "All Subjects" : activeSubject
+  const topicLabel   = activeTopic   === "all" ? "All Topics"   : activeTopic
+
+  const subjectPending = activeSubject === "all"
+    ? null
+    : (subjectMap[activeSubject]?.total || 0) - (subjectMap[activeSubject]?.done || 0)
+
+  const topicPending = activeTopic === "all"
+    ? null
+    : (topicStats[activeTopic]?.total || 0) - (topicStats[activeTopic]?.done || 0)
+
+  if (subjects.length === 0 && topics.length === 0) return null
+
+  return (
+    // relative here so both panels can anchor left-0 right-0 to the full row width
+    <div className="relative flex gap-2" ref={wrapperRef}>
+
+      {/* ── Step 1: Subject ── */}
+      {subjects.length > 0 && (
+        <div className="flex-1 min-w-0">
+          {/* Trigger button */}
+          <button
+            onClick={() => { setSubjectOpen(v => !v); setTopicOpen(false) }}
+            className={`w-full flex items-center gap-2 px-3 py-2 rounded-xl border text-xs font-semibold transition-all duration-200 ${
+              activeSubject !== "all"
+                ? "bg-purple-500/10 border-purple-500/30 text-purple-300"
+                : "bg-gray-900 border-gray-800 text-gray-400 hover:border-gray-700 hover:text-gray-300"
+            }`}
+          >
+            <Layers size={12} className={activeSubject !== "all" ? "text-purple-400" : "text-gray-600"} />
+            <span className="flex-1 text-left truncate">{subjectLabel}</span>
+            {subjectPending !== null && subjectPending > 0 && (
+              <span className="shrink-0 text-[10px] font-black text-amber-400 bg-amber-500/10 border border-amber-500/20 px-1.5 py-0.5 rounded-full">
+                {subjectPending} left
+              </span>
+            )}
+            <ChevronDown size={11} className={`shrink-0 transition-transform duration-200 ${subjectOpen ? "rotate-180" : ""}`} />
+          </button>
+
+          {/* Panel — full row width via absolute on the wrapper */}
+          {subjectOpen && (
+            <div className="absolute top-full left-0 right-0 mt-1.5 z-50 bg-gray-900 border border-gray-700/60 rounded-2xl shadow-2xl shadow-black/60 overflow-hidden"
+              style={{ animation: "wizardSlideDown 0.18s cubic-bezier(0.16,1,0.3,1)" }}>
+              {/* Header */}
+              <div className="px-3 pt-2.5 pb-1.5 border-b border-gray-800/80">
+                <p className="text-[10px] font-black uppercase tracking-widest text-gray-500">📚 Subject</p>
+                <p className="text-[10px] text-gray-700 mt-0.5">Sorted by most pending first</p>
+              </div>
+              {/* Options */}
+              <div className="max-h-56 overflow-y-auto py-1">
+                {/* All option */}
+                <button
+                  onClick={() => { onSubjectChange("all"); setSubjectOpen(false) }}
+                  className={`w-full flex items-center gap-3 px-3 py-2.5 text-xs transition-colors ${
+                    activeSubject === "all" ? "bg-gray-800/80 text-white" : "text-gray-400 hover:bg-gray-800/50 hover:text-white"
+                  }`}
+                >
+                  <div className={`w-1.5 h-1.5 rounded-full shrink-0 ${activeSubject === "all" ? "bg-purple-400" : "bg-gray-700"}`} />
+                  <span className="flex-1 text-left font-semibold">All Subjects</span>
+                  {activeSubject === "all" && <CheckCircle size={11} className="text-purple-400 shrink-0" />}
+                </button>
+                <div className="h-px bg-gray-800/60 mx-2 my-0.5" />
+                {/* Sorted subjects */}
+                {sortedSubjects.map(cat => {
+                  const { done, total } = subjectMap[cat] || { done: 0, total: 0 }
+                  const pending = total - done
+                  const isActive = activeSubject === cat
+                  const allDone = done === total && total > 0
+                  return (
+                    <button
+                      key={cat}
+                      onClick={() => { onSubjectChange(cat); setSubjectOpen(false) }}
+                      className={`w-full flex items-center gap-3 px-3 py-2.5 text-xs transition-colors ${
+                        isActive ? "bg-purple-500/12 text-purple-300" : "text-gray-400 hover:bg-gray-800/50 hover:text-white"
+                      }`}
+                    >
+                      <div className={`w-1.5 h-1.5 rounded-full shrink-0 ${isActive ? "bg-purple-400" : allDone ? "bg-emerald-500" : pending > 0 ? "bg-amber-500" : "bg-gray-700"}`} />
+                      <span className="flex-1 text-left truncate font-medium">{cat}</span>
+                      {/* Mini progress bar */}
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        <div className="w-10 h-1 bg-gray-800 rounded-full overflow-hidden">
+                          <div className={`h-full rounded-full transition-all ${allDone ? "bg-emerald-500" : "bg-amber-500"}`}
+                            style={{ width: total > 0 ? `${(done / total) * 100}%` : "0%" }} />
+                        </div>
+                        <span className={`text-[10px] font-black tabular-nums ${allDone ? "text-emerald-400" : pending > 0 ? "text-amber-400" : "text-gray-600"}`}>
+                          {pending > 0 ? `${pending} left` : "✓"}
+                        </span>
+                      </div>
+                      {isActive && <CheckCircle size={11} className="text-purple-400 shrink-0" />}
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── Step 2: Topic ── */}
+      {topics.length > 0 && (
+        <div className="flex-1 min-w-0">
+          {/* Trigger button */}
+          <button
+            onClick={() => { setTopicOpen(v => !v); setSubjectOpen(false) }}
+            className={`w-full flex items-center gap-2 px-3 py-2 rounded-xl border text-xs font-semibold transition-all duration-200 ${
+              activeTopic !== "all"
+                ? "bg-indigo-500/10 border-indigo-500/30 text-indigo-300"
+                : "bg-gray-900 border-gray-800 text-gray-400 hover:border-gray-700 hover:text-gray-300"
+            }`}
+          >
+            <Tag size={12} className={activeTopic !== "all" ? "text-indigo-400" : "text-gray-600"} />
+            <span className="flex-1 text-left truncate">{topicLabel}</span>
+            {topicPending !== null && topicPending > 0 && (
+              <span className="shrink-0 text-[10px] font-black text-amber-400 bg-amber-500/10 border border-amber-500/20 px-1.5 py-0.5 rounded-full">
+                {topicPending} left
+              </span>
+            )}
+            <ChevronDown size={11} className={`shrink-0 transition-transform duration-200 ${topicOpen ? "rotate-180" : ""}`} />
+          </button>
+
+          {/* Panel — full row width via absolute on the wrapper */}
+          {topicOpen && (
+            <div className="absolute top-full left-0 right-0 mt-1.5 z-50 bg-gray-900 border border-gray-700/60 rounded-2xl shadow-2xl shadow-black/60 overflow-hidden"
+              style={{ animation: "wizardSlideDown 0.18s cubic-bezier(0.16,1,0.3,1)" }}>
+              {/* Header */}
+              <div className="px-3 pt-2.5 pb-1.5 border-b border-gray-800/80">
+                <p className="text-[10px] font-black uppercase tracking-widest text-gray-500">🏷️ Topic</p>
+                <p className="text-[10px] text-gray-700 mt-0.5">Sorted by most pending first</p>
+              </div>
+              {/* Options */}
+              <div className="max-h-56 overflow-y-auto py-1">
+                {/* All option */}
+                <button
+                  onClick={() => { onTopicChange("all"); setTopicOpen(false) }}
+                  className={`w-full flex items-center gap-3 px-3 py-2.5 text-xs transition-colors ${
+                    activeTopic === "all" ? "bg-gray-800/80 text-white" : "text-gray-400 hover:bg-gray-800/50 hover:text-white"
+                  }`}
+                >
+                  <div className={`w-1.5 h-1.5 rounded-full shrink-0 ${activeTopic === "all" ? "bg-indigo-400" : "bg-gray-700"}`} />
+                  <span className="flex-1 text-left font-semibold">All Topics</span>
+                  {activeTopic === "all" && <CheckCircle size={11} className="text-indigo-400 shrink-0" />}
+                </button>
+                <div className="h-px bg-gray-800/60 mx-2 my-0.5" />
+                {/* Sorted topics */}
+                {sortedTopics.map(topic => {
+                  const stats   = topicStats[topic] || { done: 0, total: 0 }
+                  const pending = stats.total - stats.done
+                  const isActive = activeTopic === topic
+                  const allDone  = stats.done === stats.total && stats.total > 0
+                  return (
+                    <button
+                      key={topic}
+                      onClick={() => { onTopicChange(topic); setTopicOpen(false) }}
+                      className={`w-full flex items-center gap-3 px-3 py-2.5 text-xs transition-colors ${
+                        isActive ? "bg-indigo-500/12 text-indigo-300" : "text-gray-400 hover:bg-gray-800/50 hover:text-white"
+                      }`}
+                    >
+                      <div className={`w-1.5 h-1.5 rounded-full shrink-0 ${isActive ? "bg-indigo-400" : allDone ? "bg-emerald-500" : pending > 0 ? "bg-amber-500" : "bg-gray-700"}`} />
+                      <span className="flex-1 text-left truncate font-medium">{topic}</span>
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        <div className="w-10 h-1 bg-gray-800 rounded-full overflow-hidden">
+                          <div className={`h-full rounded-full transition-all ${allDone ? "bg-emerald-500" : "bg-amber-500"}`}
+                            style={{ width: stats.total > 0 ? `${(stats.done / stats.total) * 100}%` : "0%" }} />
+                        </div>
+                        <span className={`text-[10px] font-black tabular-nums ${allDone ? "text-emerald-400" : pending > 0 ? "text-amber-400" : "text-gray-600"}`}>
+                          {pending > 0 ? `${pending} left` : "✓"}
+                        </span>
+                      </div>
+                      {isActive && <CheckCircle size={11} className="text-indigo-400 shrink-0" />}
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
     </div>
   )
 }
@@ -202,6 +423,21 @@ function JoinedBatchDetail({ batch, myAttempts, currentUser, currentUserName, on
       : safeQuizzes.filter(q => (q.category || "Other") === activeSubject)
     return [...new Set(source.map(q => q.topic).filter(Boolean))].sort()
   }, [batch.quizzes, activeSubject])
+
+  // Topic stats (total + done) for sorting and progress display in WizardSelector
+  const topicStats = useMemo(() => {
+    const source = activeSubject === "all"
+      ? safeQuizzes
+      : safeQuizzes.filter(q => (q.category || "Other") === activeSubject)
+    const map = {}
+    source.forEach(q => {
+      if (!q.topic) return
+      if (!map[q.topic]) map[q.topic] = { total: 0, done: 0 }
+      map[q.topic].total++
+      if (attemptedIds.has(q.id)) map[q.topic].done++
+    })
+    return map
+  }, [safeQuizzes, activeSubject, attemptedIds])
 
   // Reset topic when subject changes
   function handleSubjectChange(val) { setActiveSubject(val); setActiveTopic("all"); setVisibleCount(10) }
@@ -590,39 +826,18 @@ function JoinedBatchDetail({ batch, myAttempts, currentUser, currentUserName, on
               )}
             </div>
 
-            {/* Row 3: Subject pills (horizontal scroll) + Topic dropdown */}
+            {/* Row 3: Wizard Selector — Subject + Topic (mobile & desktop) */}
             {(subjects.length > 0 || topics.length > 0) && (
-              <div className="flex items-center gap-2">
-                {/* Subject pills — scrollable on mobile, sidebar on desktop */}
-                {subjects.length > 0 && (
-                  <div className="flex-1 min-w-0 overflow-x-auto scrollbar-none sm:hidden">
-                    <div className="flex gap-1.5 pb-0.5" style={{ width: "max-content" }}>
-                      <button onClick={() => handleSubjectChange("all")}
-                        className={`text-[11px] px-2.5 py-1 rounded-lg border transition font-semibold whitespace-nowrap ${
-                          activeSubject === "all" ? "bg-gray-700 text-white border-gray-600" : "bg-gray-900 text-gray-400 border-gray-800"
-                        }`}>
-                        All
-                      </button>
-                      {subjects.map(cat => (
-                        <button key={cat} onClick={() => handleSubjectChange(cat)}
-                          className={`text-[11px] px-2.5 py-1 rounded-lg border transition whitespace-nowrap ${
-                            activeSubject === cat ? "bg-purple-500/15 text-purple-400 border-purple-500/30" : "bg-gray-900 text-gray-400 border-gray-800"
-                          }`}>
-                          {cat}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                )}
-                {/* Topic dropdown */}
-                {topics.length > 0 && (
-                  <select value={activeTopic} onChange={e => { setActiveTopic(e.target.value); setVisibleCount(10) }}
-                    className="shrink-0 bg-gray-900 border border-gray-800 text-[11px] text-gray-400 rounded-lg px-2.5 py-1.5 focus:outline-none focus:border-indigo-500/40 cursor-pointer max-w-[130px]">
-                    <option value="all">All Topics</option>
-                    {topics.map(t => <option key={t} value={t}>{t}</option>)}
-                  </select>
-                )}
-              </div>
+              <WizardSelector
+                subjects={subjects}
+                subjectMap={subjectMap}
+                topics={topics}
+                topicStats={topicStats}
+                activeSubject={activeSubject}
+                activeTopic={activeTopic}
+                onSubjectChange={val => { handleSubjectChange(val) }}
+                onTopicChange={val => { setActiveTopic(val); setVisibleCount(10) }}
+              />
             )}
 
           </>)}
