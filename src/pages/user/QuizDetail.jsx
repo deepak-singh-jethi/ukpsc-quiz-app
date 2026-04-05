@@ -124,7 +124,7 @@ export default function QuizDetail() {
 
         {/* ── HERO ── */}
         <div
-          className="relative rounded-2xl border border-gray-800/80 overflow-hidden mb-5 px-7 py-5"
+          className="relative rounded-2xl border border-gray-800/80 overflow-hidden mb-5 px-4 py-4 sm:px-7 sm:py-5"
           style={{
             background: "linear-gradient(120deg, #0d1520 0%, #111827 60%, #0a1628 100%)",
             opacity: 1,
@@ -135,92 +135,97 @@ export default function QuizDetail() {
           <div className="absolute -top-16 -right-16 w-64 h-64 rounded-full pointer-events-none"
             style={{ background: "radial-gradient(circle, rgba(6,182,212,0.07) 0%, transparent 70%)" }} />
 
-          <div className="relative flex flex-col sm:flex-row items-start sm:items-center gap-4 sm:gap-6 flex-wrap">
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2 mb-2 flex-wrap">
-                {quiz.category && (
-                  <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-cyan-400 bg-cyan-500/10 border border-cyan-500/20 px-2.5 py-0.5 rounded-full">
-                    {quiz.category}
-                  </span>
-                )}
-                <span className={`text-[10px] font-bold uppercase tracking-[0.12em] px-2.5 py-0.5 rounded-full border flex items-center gap-1 ${diff.color} ${diff.bg} ${diff.border}`}>
-                  <span className={`w-1.5 h-1.5 rounded-full ${diff.dot}`} />
-                  {quiz.difficulty || "medium"}
+          <div className="relative flex flex-col gap-4">
+            {/* Tags row — always its own line so they never compete with the title */}
+            <div className="flex items-center gap-2 flex-wrap">
+              {quiz.category && (
+                <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-cyan-400 bg-cyan-500/10 border border-cyan-500/20 px-2.5 py-0.5 rounded-full">
+                  {quiz.category}
                 </span>
-                {isExpired && (
-                  <span className="text-[10px] font-bold uppercase tracking-[0.12em] bg-red-500/10 text-red-400 border border-red-500/20 px-2.5 py-0.5 rounded-full">
-                    Expired
-                  </span>
-                )}
-                {batchId ? (
-                  <span className="text-[10px] font-bold uppercase tracking-[0.12em] bg-purple-500/10 text-purple-400 border border-purple-500/20 px-2.5 py-0.5 rounded-full flex items-center gap-1">
-                    <GraduationCap size={10} /> {batchName || "Batch Quiz"}
-                  </span>
-                ) : (
-                  <span className="text-[10px] font-bold uppercase tracking-[0.12em] bg-gray-800 text-gray-500 border border-gray-700 px-2.5 py-0.5 rounded-full flex items-center gap-1">
-                    <Globe size={10} /> Free Quiz
-                  </span>
-                )}
-              </div>
-
-              <h1 className="text-xl sm:text-2xl font-black text-white tracking-tight leading-snug mb-2 break-words">
-                {quiz.title}
-              </h1>
-
-              <div className="flex items-center gap-2 flex-wrap">
-                <span className="flex items-center gap-1 text-xs text-gray-400">
-                  <BookOpen size={11} className="text-gray-500" /> {quiz.questionCount || 0} questions
+              )}
+              <span className={`text-[10px] font-bold uppercase tracking-[0.12em] px-2.5 py-0.5 rounded-full border flex items-center gap-1 ${diff.color} ${diff.bg} ${diff.border}`}>
+                <span className={`w-1.5 h-1.5 rounded-full ${diff.dot}`} />
+                {quiz.difficulty || "medium"}
+              </span>
+              {isExpired && (
+                <span className="text-[10px] font-bold uppercase tracking-[0.12em] bg-red-500/10 text-red-400 border border-red-500/20 px-2.5 py-0.5 rounded-full">
+                  Expired
                 </span>
-                <span className="text-gray-700">·</span>
-                <span className="flex items-center gap-1 text-xs text-gray-400">
-                  <Clock size={11} className="text-gray-500" /> {quiz.totalTime || 10} min
+              )}
+              {batchId ? (
+                <span className="text-[10px] font-bold uppercase tracking-[0.12em] bg-purple-500/10 text-purple-400 border border-purple-500/20 px-2.5 py-0.5 rounded-full flex items-center gap-1">
+                  <GraduationCap size={10} /> {batchName || "Batch Quiz"}
                 </span>
-                {quiz.marksPerQ && <>
-                  <span className="text-gray-700">·</span>
-                  <span className="flex items-center gap-1 text-xs text-emerald-400 font-semibold">
-                    <Zap size={10} /> +{quiz.marksPerQ} correct
-                  </span>
-                </>}
-                {quiz.negativeMark > 0 && <>
-                  <span className="text-gray-700">·</span>
-                  <span className="text-xs text-rose-400 font-semibold">−{quiz.negativeMark} wrong</span>
-                </>}
-                {quiz.expiryDate && <>
-                  <span className="text-gray-700">·</span>
-                  <span className={`flex items-center gap-1 text-xs font-semibold ${isExpired ? "text-red-400" : "text-orange-400"}`}>
-                    <Calendar size={10} />
-                    {isExpired ? "Expired" : "Closes"} {new Date(quiz.expiryDate).toLocaleDateString()}
-                  </span>
-                </>}
-              </div>
-
-              {quiz.description && (
-                <p className="text-gray-500 text-xs mt-2 leading-relaxed max-w-xl">{quiz.description}</p>
+              ) : (
+                <span className="text-[10px] font-bold uppercase tracking-[0.12em] bg-gray-800 text-gray-500 border border-gray-700 px-2.5 py-0.5 rounded-full flex items-center gap-1">
+                  <Globe size={10} /> Free Quiz
+                </span>
               )}
             </div>
 
-            <div className="shrink-0 self-start sm:self-center">
-              {isExpired ? (
-                <div className="flex items-center gap-2 text-red-400 bg-red-500/10 border border-red-500/20 rounded-xl px-4 py-2.5 text-sm">
-                  <AlertCircle size={14} /> Expired
+            {/* Title + meta + button — stacked column on mobile, row on sm+ */}
+            <div className="flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-6">
+              <div className="flex-1 min-w-0">
+                <h1 className="text-xl sm:text-2xl font-black text-white tracking-tight leading-snug mb-2 break-words">
+                  {quiz.title}
+                </h1>
+
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="flex items-center gap-1 text-xs text-gray-400">
+                    <BookOpen size={11} className="text-gray-500" /> {quiz.questionCount || 0} questions
+                  </span>
+                  <span className="text-gray-700">·</span>
+                  <span className="flex items-center gap-1 text-xs text-gray-400">
+                    <Clock size={11} className="text-gray-500" /> {quiz.totalTime || 10} min
+                  </span>
+                  {quiz.marksPerQ && <>
+                    <span className="text-gray-700">·</span>
+                    <span className="flex items-center gap-1 text-xs text-emerald-400 font-semibold">
+                      <Zap size={10} /> +{quiz.marksPerQ} correct
+                    </span>
+                  </>}
+                  {quiz.negativeMark > 0 && <>
+                    <span className="text-gray-700">·</span>
+                    <span className="text-xs text-rose-400 font-semibold">−{quiz.negativeMark} wrong</span>
+                  </>}
+                  {quiz.expiryDate && <>
+                    <span className="text-gray-700">·</span>
+                    <span className={`flex items-center gap-1 text-xs font-semibold ${isExpired ? "text-red-400" : "text-orange-400"}`}>
+                      <Calendar size={10} />
+                      {isExpired ? "Expired" : "Closes"} {new Date(quiz.expiryDate).toLocaleDateString()}
+                    </span>
+                  </>}
                 </div>
-              ) : !hasAttempted ? (
-                <button
-                  onClick={() => navigate(`/quiz/${id}${batchId ? `?batchId=${batchId}` : ''}`)}
-                  className="group bg-cyan-500 hover:bg-cyan-400 text-gray-900 font-black px-8 py-3 rounded-xl transition-all flex items-center gap-2 shadow-lg shadow-cyan-500/20 text-sm whitespace-nowrap"
-                >
-                  <Play size={15} className="group-hover:scale-110 transition-transform" />
-                  Start Quiz
-                </button>
-              ) : (
-                <button
-                  onClick={() => navigate(`/quiz/${id}${batchId ? `?batchId=${batchId}` : ''}`)}
-                  className="group bg-gray-800 hover:bg-gray-700 text-white font-bold px-6 py-3 rounded-xl transition-all flex items-center gap-2 border border-gray-700 hover:border-gray-600 text-sm whitespace-nowrap"
-                >
-                  <RotateCcw size={14} className="group-hover:rotate-180 transition-transform duration-500" />
-                  Retry Quiz
-                </button>
-              )}
+
+                {quiz.description && (
+                  <p className="text-gray-500 text-xs mt-2 leading-relaxed max-w-xl">{quiz.description}</p>
+                )}
+              </div>
+
+              {/* CTA — full-width on mobile, auto-width on sm+ */}
+              <div className="shrink-0 sm:self-center w-full sm:w-auto">
+                {isExpired ? (
+                  <div className="flex items-center justify-center gap-2 text-red-400 bg-red-500/10 border border-red-500/20 rounded-xl px-4 py-2.5 text-sm w-full sm:w-auto">
+                    <AlertCircle size={14} /> Expired
+                  </div>
+                ) : !hasAttempted ? (
+                  <button
+                    onClick={() => navigate(`/quiz/${id}${batchId ? `?batchId=${batchId}` : ''}`)}
+                    className="group w-full sm:w-auto bg-cyan-500 hover:bg-cyan-400 text-gray-900 font-black px-8 py-3 rounded-xl transition-all flex items-center justify-center gap-2 shadow-lg shadow-cyan-500/20 text-sm"
+                  >
+                    <Play size={15} className="group-hover:scale-110 transition-transform" />
+                    Start Quiz
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => navigate(`/quiz/${id}${batchId ? `?batchId=${batchId}` : ''}`)}
+                    className="group w-full sm:w-auto bg-gray-800 hover:bg-gray-700 text-white font-bold px-6 py-3 rounded-xl transition-all flex items-center justify-center gap-2 border border-gray-700 hover:border-gray-600 text-sm"
+                  >
+                    <RotateCcw size={14} className="group-hover:rotate-180 transition-transform duration-500" />
+                    Retry Quiz
+                  </button>
+                )}
+              </div>
             </div>
           </div>
         </div>
