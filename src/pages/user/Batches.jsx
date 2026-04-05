@@ -415,6 +415,7 @@ function JoinedBatchDetail({ batch, myAttempts, currentUser, currentUserName, on
   const [quizFilter,    setQuizFilter]    = useState("todo")
   const [search,        setSearch]        = useState("")
   const [visibleCount,  setVisibleCount]  = useState(10)
+  const [chatOpen,      setChatOpen]      = useState(false)
 
   // Topics scoped to the active subject
   const topics = useMemo(() => {
@@ -718,73 +719,97 @@ function JoinedBatchDetail({ batch, myAttempts, currentUser, currentUserName, on
         </button>
 
         {/*  Compact header bar  */}
-        <div className="bg-gray-900 border border-gray-800 rounded-xl px-4 py-2.5 mb-3">
-          {/* Row 1: icon + name + enrolled badge */}
-          <div className="flex items-center gap-2 mb-2">
+        <div className="bg-gray-900 border border-gray-800 rounded-xl px-4 py-2.5 mb-3 relative overflow-visible">
+          <div className="flex items-center gap-2">
             <div className="w-7 h-7 rounded-lg bg-purple-500/15 border border-purple-500/25 flex items-center justify-center shrink-0">
               <GraduationCap size={14} className="text-purple-400" />
             </div>
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2 flex-wrap">
-                <h1 className="text-sm font-black text-white tracking-tight truncate">{batch.name}</h1>
-                <span className="text-[10px] font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-1.5 py-0.5 rounded-full shrink-0">Enrolled</span>
-              </div>
+            <h1 className="text-sm font-black text-white tracking-tight truncate flex-1">{batch.name}</h1>
+            <span className="text-[10px] font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-1.5 py-0.5 rounded-full shrink-0">Enrolled</span>
+
+            {/* ── Chat trigger button ── */}
+            <div className="relative shrink-0 ml-1">
+              <button
+                onClick={() => setChatOpen(v => !v)}
+                className={`w-7 h-7 rounded-full flex items-center justify-center transition-all border ${
+                  chatOpen
+                    ? "bg-cyan-500/20 border-cyan-500/40 text-cyan-400"
+                    : "bg-gray-800 border-gray-700 text-gray-400 hover:text-gray-200 hover:border-gray-600"
+                }`}
+              >
+                <MessageCircle size={13} />
+              </button>
+              {/* Unread dot on the trigger */}
+              {(hasUnread) && !chatOpen && (
+                <span className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-cyan-400 rounded-full border border-gray-900" />
+              )}
             </div>
           </div>
-          {/* Row 2: stats + progress */}
-          <div className="flex items-center gap-3 text-xs">
-            <div className="flex items-center gap-1">
-              <span className="font-black text-amber-400">{totalCount - doneCount}</span>
-              <span className="text-gray-600 text-[10px]">to do</span>
+
+          {/* ── Slide-out panels (anchored to header, right edge) ── */}
+          {chatOpen && (
+            <div
+              className="absolute right-0 top-full mt-2 z-50 flex flex-col items-end gap-2"
+              style={{ animation: "wizardSlideDown 0.15s ease" }}
+            >
+              {/* Backdrop to close */}
+              <div className="fixed inset-0 z-[-1]" onClick={() => setChatOpen(false)} />
+
+              {/* Ask Instructor panel */}
+              <button
+                onClick={() => { setActiveTab("qa"); setActiveThread(null); setChatOpen(false) }}
+                className="flex items-center gap-0 group"
+                style={{ animation: "chatPanelSlide 0.22s cubic-bezier(0.16,1,0.3,1) both" }}
+              >
+                {/* Label side */}
+                <div className="flex items-center gap-2 bg-gray-900 border border-cyan-500/40 border-r-0 rounded-l-2xl px-4 py-2.5">
+                  <span className="text-xs font-bold text-white whitespace-nowrap">Ask Instructor</span>
+                  {hasUnread && (
+                    <span className="text-[10px] font-black bg-cyan-500 text-gray-900 px-1.5 py-0.5 rounded-full leading-none">
+                      {threads.filter(t => !t.resolved && t.messages?.slice(-1)[0]?.fromRole === "admin").length} new
+                    </span>
+                  )}
+                </div>
+                {/* Circle side */}
+                <div className="w-10 h-10 rounded-full bg-cyan-500/15 border border-cyan-500/40 flex items-center justify-center shrink-0">
+                  <MessageCircle size={16} className="text-cyan-400" />
+                </div>
+              </button>
+
+              {/* Group Chat panel */}
+              <button
+                onClick={() => { setActiveTab("group"); setChatOpen(false) }}
+                className="flex items-center gap-0 group"
+                style={{ animation: "chatPanelSlide 0.28s cubic-bezier(0.16,1,0.3,1) both" }}
+              >
+                {/* Label side */}
+                <div className="flex items-center gap-2 bg-gray-900 border border-emerald-500/40 border-r-0 rounded-l-2xl px-4 py-2.5">
+                  <span className="text-xs font-bold text-white whitespace-nowrap">Group Chat</span>
+                  {groupMsgs.filter(m => m.fromRole === "admin").length > 0 && (
+                    <span className="text-[10px] font-black bg-emerald-500 text-gray-900 px-1.5 py-0.5 rounded-full leading-none">
+                      {groupMsgs.filter(m => m.fromRole === "admin").length}
+                    </span>
+                  )}
+                </div>
+                {/* Circle side */}
+                <div className="w-10 h-10 rounded-full bg-emerald-500/15 border border-emerald-500/40 flex items-center justify-center shrink-0">
+                  <Hash size={16} className="text-emerald-400" />
+                </div>
+              </button>
             </div>
-            <div className="flex items-center gap-1">
-              <span className="font-black text-emerald-400">{doneCount}</span>
-              <span className="text-gray-600 text-[10px]">done</span>
-            </div>
-            {bestStreak > 0 && (
-              <div className="flex items-center gap-1">
-                <span className="font-black text-orange-400">{bestStreak}</span>
-                <span className="text-gray-600 text-[10px]">streak</span>
-              </div>
-            )}
-            <div className="flex items-center gap-1.5 ml-auto">
-              <span className="text-xs font-black text-white">{doneCount}<span className="text-gray-600 font-normal">/{totalCount}</span></span>
-              <div className="w-16 h-1 bg-gray-800 rounded-full overflow-hidden">
-                <div className="h-full bg-purple-500 rounded-full transition-all" style={{ width: `${progress}%` }} />
-              </div>
-            </div>
-          </div>
+          )}
         </div>
 
         {/*  Tabs + content  */}
-        <div className="flex flex-col flex-1 min-h-0">
+        <div className="flex flex-col flex-1 min-h-0 relative">
 
-        {/* ── CONTROL STRIP (mobile-first 3-row layout) ── */}
+        {/* ── CONTROL STRIP (only quiz filters, no tab bar) ── */}
         <div className="flex-shrink-0 mb-2 space-y-1.5">
 
-          {/* Row 1: Navigation tabs — 3 equal columns */}
-          <div className="grid grid-cols-3 gap-1.5">
-            {[
-              { id: "quizzes", label: "Quizzes",        icon: BookOpen,      count: totalCount,   activeClass: "bg-purple-500/10 text-purple-400 border-purple-500/30" },
-              { id: "qa",      label: "Ask Instructor", icon: MessageCircle, count: null, badge: hasUnread, activeClass: "bg-cyan-500/10 text-cyan-400 border-cyan-500/30" },
-              { id: "group",   label: "Group Chat",     icon: Hash,          count: null,         activeClass: "bg-emerald-500/10 text-emerald-400 border-emerald-500/30" },
-            ].map(t => (
-              <button key={t.id} onClick={() => { setActiveTab(t.id); setActiveThread(null) }}
-                className={`flex items-center justify-center gap-1 py-2 rounded-xl text-xs font-bold border transition ${
-                  activeTab === t.id ? t.activeClass : "bg-gray-900/60 text-gray-500 border-gray-800 hover:text-white"
-                }`}>
-                <t.icon size={13} className="shrink-0" />
-                <span className="truncate">{t.label}</span>
-                {t.count !== null && <span className={`font-black text-[10px] shrink-0 ${activeTab === t.id ? "opacity-80" : "text-gray-700"}`}>{t.count}</span>}
-                {t.badge && <span className="w-1.5 h-1.5 bg-cyan-400 rounded-full shrink-0" />}
-              </button>
-            ))}
-          </div>
-
-          {/* Row 2 + 3: Only shown on quizzes tab */}
+          {/* Row 1: All/ToDo/Done pills + Search — only on quizzes view */}
           {activeTab === "quizzes" && totalCount > 0 && (<>
 
-            {/* Row 2: All/ToDo/Done pills + Search */}
+            {/* Row 1: All/ToDo/Done pills + Search */}
             <div className="flex items-center gap-1.5">
               <div className="flex gap-0.5 bg-gray-900 border border-gray-800 rounded-lg p-0.5 shrink-0">
                 {[
@@ -826,7 +851,7 @@ function JoinedBatchDetail({ batch, myAttempts, currentUser, currentUserName, on
               )}
             </div>
 
-            {/* Row 3: Wizard Selector — Subject + Topic (mobile & desktop) */}
+            {/* Row 2: Wizard Selector — Subject + Topic */}
             {(subjects.length > 0 || topics.length > 0) && (
               <WizardSelector
                 subjects={subjects}
@@ -841,6 +866,28 @@ function JoinedBatchDetail({ batch, myAttempts, currentUser, currentUserName, on
             )}
 
           </>)}
+
+          {/* Chat section header — shown when in qa/group tab */}
+          {(activeTab === "qa" || activeTab === "group") && (
+            <div className="flex items-center gap-2">
+              <button onClick={() => { setActiveTab("quizzes"); setActiveThread(null) }}
+                className="flex items-center gap-1.5 text-gray-500 hover:text-white text-xs transition-colors">
+                <ArrowLeft size={12} /> Back to Quizzes
+              </button>
+              <div className="flex-1" />
+              <div className="flex gap-1 bg-gray-900 border border-gray-800 rounded-lg p-0.5">
+                <button onClick={() => { setActiveTab("qa"); setActiveThread(null) }}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[11px] font-bold transition ${activeTab === "qa" ? "bg-cyan-500/15 text-cyan-400" : "text-gray-500 hover:text-gray-300"}`}>
+                  <MessageCircle size={11} /> Ask Instructor
+                  {hasUnread && <span className="w-1.5 h-1.5 bg-cyan-400 rounded-full" />}
+                </button>
+                <button onClick={() => { setActiveTab("group") }}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[11px] font-bold transition ${activeTab === "group" ? "bg-emerald-500/15 text-emerald-400" : "text-gray-500 hover:text-gray-300"}`}>
+                  <Hash size={11} /> Group Chat
+                </button>
+              </div>
+            </div>
+          )}
         </div>
 
         {/*  Quizzes tab  */}
@@ -890,7 +937,7 @@ function JoinedBatchDetail({ batch, myAttempts, currentUser, currentUserName, on
               <div className="flex-1 min-w-0 flex flex-col min-h-0">
 
                 {/* ── Quiz list ── */}
-                <div className="overflow-y-auto flex-1 min-h-0">
+                <div className="overflow-y-auto flex-1 min-h-0 pb-2">
                   {visibleQuizzes.length === 0 ? (
                     <div className="rounded-xl border border-gray-800 bg-gray-900/40 p-10 text-center">
                       <Search size={22} className="mx-auto text-gray-700 mb-2" />
@@ -912,12 +959,11 @@ function JoinedBatchDetail({ batch, myAttempts, currentUser, currentUserName, on
                       return (
                         <div key={q.id}
                           onClick={() => navigate(`/quiz/${q.id}/detail${batch.id ? `?batchId=${batch.id}` : ''}`)}
-                          className={`flex items-center gap-3 rounded-xl px-3 py-2 cursor-pointer transition-all border ${
+                          className={`flex items-center gap-3 rounded-xl px-3 py-2.5 cursor-pointer transition-all border ${
                             isDone
                               ? "bg-gray-900/40 border-gray-800/60 hover:border-gray-700"
                               : "bg-gray-900 border-cyan-500/20 hover:border-cyan-500/40"
                           }`}
-                          style={{ minHeight: 52 }}
                         >
                           {/* Score / pending indicator */}
                           {isDone ? (
@@ -933,7 +979,7 @@ function JoinedBatchDetail({ batch, myAttempts, currentUser, currentUserName, on
 
                           {/* Title + meta row */}
                           <div className="flex-1 min-w-0 flex flex-col justify-center gap-0.5">
-                            <p className={`text-xs font-semibold leading-none truncate ${isDone ? "text-gray-400" : "text-white"}`}>
+                            <p className={`text-xs font-semibold leading-snug ${isDone ? "text-gray-400" : "text-white"}`}>
                               {q.title}
                             </p>
                             <div className="flex items-center gap-1 min-w-0 overflow-hidden">
