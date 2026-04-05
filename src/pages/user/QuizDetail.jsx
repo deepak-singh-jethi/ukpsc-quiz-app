@@ -135,7 +135,7 @@ export default function QuizDetail() {
           <div className="absolute -top-16 -right-16 w-64 h-64 rounded-full pointer-events-none"
             style={{ background: "radial-gradient(circle, rgba(6,182,212,0.07) 0%, transparent 70%)" }} />
 
-          <div className="relative flex items-center gap-6 flex-wrap">
+          <div className="relative flex flex-col sm:flex-row items-start sm:items-center gap-4 sm:gap-6 flex-wrap">
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 mb-2 flex-wrap">
                 {quiz.category && (
@@ -163,7 +163,7 @@ export default function QuizDetail() {
                 )}
               </div>
 
-              <h1 className="text-2xl font-black text-white tracking-tight leading-tight mb-2 truncate">
+              <h1 className="text-xl sm:text-2xl font-black text-white tracking-tight leading-snug mb-2 break-words">
                 {quiz.title}
               </h1>
 
@@ -199,7 +199,7 @@ export default function QuizDetail() {
               )}
             </div>
 
-            <div className="shrink-0">
+            <div className="shrink-0 self-start sm:self-center">
               {isExpired ? (
                 <div className="flex items-center gap-2 text-red-400 bg-red-500/10 border border-red-500/20 rounded-xl px-4 py-2.5 text-sm">
                   <AlertCircle size={14} /> Expired
