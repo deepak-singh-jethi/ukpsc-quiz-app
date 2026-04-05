@@ -301,38 +301,22 @@ function DesktopRightPanel({ avgScore, totalAttempted, needsRetryCount, batchSec
 // MOBILE HEADER
 // ─────────────────────────────────────────────────────────────────────────────
 
-function MobileHeader({ currentUser, totalAttempted, avgScore, streakDays }) {
-  const initial = (currentUser?.displayName?.charAt(0) || currentUser?.email?.charAt(0) || "U").toUpperCase()
-  const firstName = currentUser?.displayName?.split(" ")[0] || currentUser?.email?.split("@")[0] || "Student"
-
+function MobileHeader({ totalAttempted, avgScore, streakDays, remaining }) {
   return (
     <div className="lg:hidden pt-1">
-      {/* Greeting row */}
-      <div className="flex items-center justify-between mb-4">
-        <div>
-          <p className="text-xs text-gray-500 font-medium mb-0.5">नमस्ते 👋</p>
-          <h1 className="text-2xl font-black text-white tracking-tight leading-none">{firstName}</h1>
-        </div>
-        <div className="flex items-center gap-2">
-          {streakDays >= 1 && (
-            <div className="flex items-center gap-1.5 bg-amber-500/10 border border-amber-500/20 rounded-xl px-2.5 py-1.5">
-              <Flame size={12} className="text-amber-400" />
-              <span className="text-xs font-bold text-amber-400">{streakDays}d</span>
-            </div>
-          )}
-          <div className="w-10 h-10 rounded-2xl flex items-center justify-center shadow-lg shadow-cyan-500/20 shrink-0"
-            style={{ background: "linear-gradient(135deg, #22d3ee, #0d9488)" }}>
-            <span className="text-sm font-black text-white">{initial}</span>
-          </div>
-        </div>
-      </div>
-
-      {/* Stat tiles */}
+      {/* Stat tiles — greeting row removed */}
       <div className="grid grid-cols-3 gap-2 mb-3">
-        {/* Attempted */}
+        {/* Done */}
         <div className="bg-[#111318] border border-gray-800/60 rounded-2xl p-3 text-center">
           <div className="text-[26px] font-black text-cyan-400 tabular-nums leading-none mb-1">{totalAttempted}</div>
           <div className="text-[10px] text-gray-500 font-semibold uppercase tracking-wider">Done</div>
+        </div>
+        {/* Remaining */}
+        <div className="bg-[#111318] border border-gray-800/60 rounded-2xl p-3 text-center">
+          <div className={`text-[26px] font-black tabular-nums leading-none mb-1 ${remaining > 0 ? "text-cyan-400" : "text-gray-700"}`}>
+            {remaining}
+          </div>
+          <div className="text-[10px] text-gray-500 font-semibold uppercase tracking-wider">Left</div>
         </div>
         {/* Avg Score */}
         <div className="bg-[#111318] border border-gray-800/60 rounded-2xl p-3 text-center">
@@ -341,14 +325,16 @@ function MobileHeader({ currentUser, totalAttempted, avgScore, streakDays }) {
           </div>
           <div className="text-[10px] text-gray-500 font-semibold uppercase tracking-wider">Avg</div>
         </div>
-        {/* Streak — clean, no clipping ring */}
-        <div className="bg-[#111318] border border-gray-800/60 rounded-2xl p-3 text-center">
-          <div className="text-[26px] font-black text-violet-400 tabular-nums leading-none mb-1">
-            {streakDays > 0 ? streakDays : <span className="text-gray-700">0</span>}
-          </div>
-          <div className="text-[10px] text-gray-500 font-semibold uppercase tracking-wider">Streak</div>
-        </div>
       </div>
+      {/* Streak pill — shown only when active */}
+      {streakDays >= 1 && (
+        <div className="flex justify-end mb-1">
+          <div className="flex items-center gap-1.5 bg-amber-500/10 border border-amber-500/20 rounded-xl px-2.5 py-1 mb-2">
+            <Flame size={11} className="text-amber-400" />
+            <span className="text-[11px] font-bold text-amber-400">{streakDays}d streak</span>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
@@ -359,40 +345,49 @@ function MobileHeader({ currentUser, totalAttempted, avgScore, streakDays }) {
 
 function MobileBatchStrip({ batchSections, navigate }) {
   if (!batchSections.length) return null
+  const PREVIEW = 2
+  const visible = batchSections.slice(0, PREVIEW)
+  const hasMore = batchSections.length > PREVIEW
   return (
-    <div className="lg:hidden overflow-x-auto -mx-4 sm:-mx-6 px-4 sm:px-6" style={{ scrollbarWidth: "none", WebkitOverflowScrolling: "touch" }}>
-      <div className="flex gap-2 py-0.5" style={{ width: "max-content" }}>
-        {batchSections.map(({ batch, quizzes }) => {
-          const done = quizzes.filter(q => q.attempted).length
-          const total = quizzes.length
-          const pct = total ? Math.round((done / total) * 100) : 0
-          return (
-            <button key={batch.id} onClick={() => navigate("/batches")}
-              className="bg-[#111318] border border-gray-800/60 rounded-2xl p-3 text-left active:border-violet-500/40 transition-colors flex flex-col justify-between"
-              style={{ minWidth: 148, height: 76 }}>
-              <p className="text-[12px] text-white font-bold leading-tight line-clamp-1 mb-auto"
-                style={{ WebkitLineClamp: 1, display: "-webkit-box", WebkitBoxOrient: "vertical", overflow: "hidden" }}>
-                {batch.name}
-              </p>
-              <div>
-                <div className="h-1 bg-gray-800 rounded-full mb-1.5 mt-2">
-                  <div className={`h-full rounded-full ${pct === 100 ? "bg-emerald-500" : "bg-violet-500"}`} style={{ width: `${pct}%` }} />
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-[10px] text-gray-600">{done}/{total} done</span>
-                  <span className="text-[10px] font-black text-violet-400">{pct}%</span>
-                </div>
-              </div>
-            </button>
-          )
-        })}
+    <div className="lg:hidden space-y-2">
+      {visible.map(({ batch, quizzes }) => {
+        const done = quizzes.filter(q => q.attempted).length
+        const total = quizzes.length
+        const pct = total ? Math.round((done / total) * 100) : 0
+        const needsAttention = quizzes.filter(q => q.attempted && q.bestScore < 70).length
+        const remaining = total - done
+        return (
+          <button key={batch.id} onClick={() => navigate("/batches")}
+            className="w-full bg-[#111318] border border-gray-800/60 rounded-2xl px-4 py-3 text-left active:border-violet-500/40 transition-colors">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-[13px] text-white font-bold truncate flex-1 mr-3">{batch.name}</span>
+              <span className="text-[11px] text-gray-500 tabular-nums shrink-0">{done}/{total}</span>
+            </div>
+            <div className="h-1.5 bg-gray-800 rounded-full mb-2">
+              <div className={`h-full rounded-full transition-all duration-700 ${pct === 100 ? "bg-emerald-500" : "bg-violet-500"}`}
+                style={{ width: `${pct}%` }} />
+            </div>
+            <div className="flex items-center gap-3">
+              {remaining > 0
+                ? <span className="text-[11px] text-gray-500">{remaining} remaining</span>
+                : <span className="text-[11px] text-emerald-400 font-semibold">All done ✓</span>
+              }
+              {needsAttention > 0 && (
+                <span className="text-[11px] text-amber-400">{needsAttention} need attention</span>
+              )}
+              <span className="text-[11px] font-black text-violet-400 ml-auto">{pct}%</span>
+            </div>
+          </button>
+        )
+      })}
+      {hasMore && (
         <button onClick={() => navigate("/batches")}
-          className="bg-[#111318] border border-dashed border-gray-700/60 rounded-2xl flex flex-col items-center justify-center gap-1 active:bg-gray-800/50 transition-colors shrink-0"
-          style={{ minWidth: 64, height: 76 }}>
-          <GraduationCap size={14} className="text-gray-600" />
-          <span className="text-[10px] text-gray-600 font-semibold">All</span>
+          className="w-full flex items-center justify-center gap-1.5 py-2 text-[11px] text-gray-600 hover:text-gray-400 active:text-gray-400 transition-colors">
+          <GraduationCap size={12} />
+          <span>+{batchSections.length - PREVIEW} more batch{batchSections.length - PREVIEW > 1 ? "es" : ""} — see all</span>
+          <ChevronRight size={11} />
         </button>
-      </div>
+      )}
     </div>
   )
 }
@@ -785,7 +780,7 @@ export default function Dashboard() {
   }, [dismissedIds])
 
   // ── DERIVED STATS ──────────────────────────────────────────────────────────
-  const { totalAttempted, avgScore, needsRetryCount, streakDays } = useMemo(() => {
+  const { totalAttempted, avgScore, needsRetryCount, streakDays, remaining } = useMemo(() => {
     const uniq = new Set(allAttempts.map(a => a.quizId))
     const firstAttempts = allAttempts.filter(a => (a.attemptNumber ?? 1) === 1)
     const avgScore = firstAttempts.length > 0
@@ -793,7 +788,14 @@ export default function Dashboard() {
       : null
 
     let needsRetryCount = 0
-    for (const { quizzes } of batchSections) needsRetryCount += quizzes.filter(q => q.attempted && q.bestScore < 70).length
+    let totalBatchQuizzes = 0
+    let doneBatchQuizzes = 0
+    for (const { quizzes } of batchSections) {
+      needsRetryCount += quizzes.filter(q => q.attempted && q.bestScore < 70).length
+      totalBatchQuizzes += quizzes.length
+      doneBatchQuizzes += quizzes.filter(q => q.attempted).length
+    }
+    const remaining = totalBatchQuizzes - doneBatchQuizzes
 
     const today = new Date()
     const dow = today.getDay()
@@ -810,7 +812,7 @@ export default function Dashboard() {
       else if (i > 0) break
     }
 
-    return { totalAttempted: uniq.size, avgScore, needsRetryCount, streakDays }
+    return { totalAttempted: uniq.size, avgScore, needsRetryCount, streakDays, remaining }
   }, [allAttempts, batchSections])
 
   // ── FILTERS ────────────────────────────────────────────────────────────────
@@ -863,12 +865,8 @@ export default function Dashboard() {
 
             {/* Mobile header */}
             {phase1Done
-              ? <MobileHeader currentUser={currentUser} totalAttempted={totalAttempted} avgScore={avgScore} streakDays={streakDays} />
+              ? <MobileHeader totalAttempted={totalAttempted} avgScore={avgScore} streakDays={streakDays} remaining={remaining} />
               : <div className="lg:hidden space-y-3 pt-1">
-                  <div className="flex justify-between items-center">
-                    <div className="space-y-1.5"><Sk className="h-3 w-16" /><Sk className="h-7 w-32" /></div>
-                    <Sk className="w-10 h-10 rounded-2xl shrink-0" />
-                  </div>
                   <div className="grid grid-cols-3 gap-2"><Sk className="h-[72px] rounded-2xl" /><Sk className="h-[72px] rounded-2xl" /><Sk className="h-[72px] rounded-2xl" /></div>
                 </div>
             }
