@@ -27,3 +27,36 @@ input, select, textarea {
 .overflow-y-auto, .overflow-auto {
   -webkit-overflow-scrolling: touch;
 }
+
+/* Wizard selector slide-down animation */
+@keyframes wizardSlideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-6px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* Chat panel slide-in from right animation */
+@keyframes chatPanelSlide {
+  from {
+    opacity: 0;
+    transform: translateX(32px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+/* Hide scrollbar but keep scroll functionality */
+.scrollbar-none {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
+}
